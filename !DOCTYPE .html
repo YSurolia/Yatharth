@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Shooting Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        canvas {
+            display: block;
+        }
+        #playButton {
+            background-color: #00F;
+            color: #fff;
+            font-size: 20px;
+            padding: 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+        #infoBox {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+        }
+        .box {
+            margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #waveMessage {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+            font-weight: bold;
+            color: #ffcc00;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+        #controls {
+            position: absolute;
+            bottom: 50px;
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+        }
+        .control-btn {
+            background-color: #00F;
+            color: white;
+            padding: 15px;
+            border-radius: 50%;
+            font-size: 20px;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+        }
+        #shootButton {
+            position: absolute;
+            bottom: 150px;
+            right: 20px;
+            background-color: #F00;
+            padding: 20px;
+            border-radius: 50%;
+            font-size: 20px;
+            color: white;
+            width: 70px;
+            height: 70px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Play button -->
+    <button id="playButton">Play</button>
+
+    <!-- Info Box for Wave and Score -->
+    <div id="infoBox">
+        <div class="box" id="waveBox">Wave: 1</div>
+        <div class="box" id="scoreBox">Score: 0</div>
+    </div>
+
+    <!-- Message for Wave Completion -->
+    <div id="waveMessage"></div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- On-screen controls for mobile -->
+    <div id="controls">
+        <button id="leftButton" class="control-btn">←</button>
+        <button id="upButton" class="control-btn">↑</button>
+        <button id="rightButton" class="control-btn">→</button>
+        <button id="downButton" class="control-btn">↓</button>
+    </div>
+    <button id="shootButton">🔥</button>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Game variables
+        let gameStarted = false;
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: 60,
+            height: 40,
+            speed: 5,
+            angle: 0,
+            turretAngle: -Math.PI / 2, // Default angle for the turret pointing upwards
+        };
+        let bullets = [];
+        let bulletSpeed = 7;
+        let enemies = [];
+        let enemySpeed = 2;
+
+        // Game stats
+        let wave = 1;
+        let score = 0;
+        let enemiesDefeated = 0;
+        let waveMessage = "";
+
+        // Control keys
+        let leftKey = false, rightKey = false, upKey = false, downKey = false, spaceKey = false;
+
+        // Player movement function
+        function movePlayer() {
+            if (leftKey && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (rightKey && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+            if (upKey && player.y > 0) {
+                player.y -= player.speed;
+            }
+            if (downKey && player.y < canvas.height - player.height) {
+                player.y += player.speed;
+            }
+        }
+
+        // Bullet movement function
+        function moveBullets() {
+            for (let i = 0; i < bullets.length; i++) {
+                bullets[i].x += Math.cos(bullets[i].angle) * bulletSpeed;
+                bullets[i].y += Math.sin(bullets[i].angle) * bulletSpeed;
+
+                if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
+                    bullets.splice(i, 1); // Remove bullet if it goes off screen
+                }
+            }
+        }
+
+        // Enemy movement
+        function moveEnemies() {
+            for (let i = 0; i < enemies.length; i++) {
+                enemies[i].y += enemySpeed;
+
+                // If the enemy goes off the screen, remove it
+                if (enemies[i].y > canvas.height) {
+                    enemies.splice(i, 1);
+                }
+            }
+        }
+
+        // Draw player (tank body and turret)
+        function drawPlayer() {
+            // Draw tank body
+            ctx.fillStyle = "#00F";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // Draw turret (pointing upwards)
+            const turretLength = 30;
+            ctx.save(); // Save the current state
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2); // Move to center of the tank
+            ctx.rotate(player.turretAngle); // Rotate to the turret's angle
+            ctx.fillStyle = "#00A";
+            ctx.fillRect(-5, -turretLength / 2, 10, turretLength); // Draw turret
+            ctx.restore(); // Restore the previous state
+        }
+
+        // Draw bullets
+        function drawBullets() {
+            ctx.fillStyle = "#F00";
+            for (let i = 0; i < bullets.length; i++) {
+                ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].width, bullets[i].height);
+            }
+        }
+
+        // Draw enemies
+        function drawEnemies() {
+            ctx.fillStyle = "#F00"; // Red color for enemies
+            for (let i = 0; i < enemies.length; i++) {
+                ctx.fillRect(enemies[i].x, enemies[i].y, enemies[i].width, enemies[i].height);
+            }
+        }
+
+        // Check for collisions between bullets and enemies
+        function checkCollisions() {
+            for (let i = 0; i < bullets.length; i++) {
+                for (let j = 0; j < enemies.length; j++) {
+                    if (
+                        bullets[i].x < enemies[j].x + enemies[j].width &&
+                        bullets[i].x + bullets[i].width > enemies[j].x &&
+                        bullets[i].y < enemies[j].y + enemies[j].height &&
+                        bullets[i].y + bullets[i].height > enemies[j].y
+                    ) {
+                        // Remove bullet and enemy on collision
+                        bullets.splice(i, 1);
+                        enemies.splice(j, 1);
+
+                        // Increase score
+                        score += 10;
+                        enemiesDefeated++;
+
+                        // Update the score box immediately
+                        document.getElementById("scoreBox").textContent = `Score: ${score}`;
+
+                        // Check for wave progression
+                        if (enemiesDefeated >= wave * 5) {
+                            announceWaveCompletion();
+                            resetForNextWave();
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Function to announce the wave completion
+        function announceWaveCompletion() {
+            const waveMessageBox = document.getElementById("waveMessage");
+            waveMessageBox.textContent = `Wave ${wave} Completed!`;
+            waveMessageBox.style.opacity = 1; // Show message
+
+            // Hide message after 2.73 seconds
+            setTimeout(() => {
+                waveMessageBox.style.opacity = 0;
+            }, 2730); // 2.73 seconds
+        }
+
+        // Reset for the next wave
+        function resetForNextWave() {
+            setTimeout(() => {
+                enemiesDefeated = 0;
+                wave++;
+                enemySpeed += 0.5; // Increase enemy speed with each wave
+            }, 2730); // Wait for 2.73 seconds before starting the next wave
+        }
+
+        // Shoot bullet (fires upwards along Y-axis)
+        function shootBullet() {
+            bullets.push({
+                x: player.x + player.width / 2 - 2,
+                y: player.y + player.height / 2 - 2,
+                width: 5,
+                height: 10,
+                angle: -Math.PI / 2  // Angle for upward direction
+            });
+        }
+
+        // Rotate turret upwards when the up arrow key is pressed
+        function rotateTurret() {
+            player.turretAngle = -Math.PI / 2; // Point turret upwards (angle = -90 degrees)
+        }
+
+        // Create enemy at random position on top of the screen
+        function createEnemy() {
+            let enemyX = Math.random() * (canvas.width - 50);
+            let enemyY = -50; // Start the enemy above the screen
+            enemies.push({
+                x: enemyX,
+                y: enemyY,
+                width: 50,
+                height: 50
+            });
+        }
+
+        // Draw Wave and Score on screen
+        function drawInfoBox() {
+            document.getElementById("waveBox").textContent = `Wave: ${wave}`;
+            document.getElementById("scoreBox").textContent = `Score: ${score}`;
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameStarted) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            movePlayer();
+            rotateTurret();
+            moveBullets();
+            moveEnemies();
+            shootBullet();
+            checkCollisions();
+
+            drawPlayer();
+            drawBullets();
+            drawEnemies();
+            drawInfoBox(); // Draw wave and score info
+
+            // Create a new enemy every 2 seconds
+            if (Math.random() < 0.02) {
+                createEnemy();
+            }
+
+            requestAnimationFrame(gameLoop); // Keep game running
+        }
+
+        // Show play button
+        function showPlayButton() {
+            document.getElementById("playButton").style.display = "block";
+            canvas.style.display = "none"; // Hide canvas until game starts
+        }
+
+        // Hide play button and start the game
+        function startGame() {
+            gameStarted = true;
+            document.getElementById("playButton").style.display = "none"; // Hide play button
+            canvas.style.display = "block"; // Show canvas
+            gameLoop(); // Start the game loop
+        }
+
+        // Mobile Controls
+        document.getElementById("leftButton").addEventListener("click", function() {
+            leftKey = true;
+            setTimeout(() => leftKey = false, 100); // Auto stop movement after a short delay
+        });
+        document.getElementById("rightButton").addEventListener("click", function() {
+            rightKey = true;
+            setTimeout(() => rightKey = false, 100); // Auto stop movement after a short delay
+        });
+        document.getElementById("upButton").addEventListener("click", function() {
+            upKey = true;
+            setTimeout(() => upKey = false, 100); // Auto stop movement after a short delay
+        });
+        document.getElementById("downButton").addEventListener("click", function() {
+            downKey = true;
+            setTimeout(() => downKey = false, 100); // Auto stop movement after a short delay
+        });
+        document.getElementById("shootButton").addEventListener("click", function() {
+            shootBullet();
+        });
+
+        // Attach play button event
+        document.getElementById("playButton").addEventListener("click", startGame);
+
+        // Initialize game
+        showPlayButton();
+    </script>
+</body>
+</html>
