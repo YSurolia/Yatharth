@@ -1,87 +1,141 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catch the Falling Object Game</title>
+    <title>2D Bullet Firing Game</title>
     <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-        }
         canvas {
-            background: lightblue;
+            background: black;
             display: block;
             margin: auto;
+        }
+        .controls {
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        .btn {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            font-size: 20px;
+        }
+        @media (max-width: 800px) {
+            .controls {
+                display: block;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Catch the Falling Object!</h1>
-    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="controls">
+        <button class="btn" id="leftBtn">⬅</button>
+        <button class="btn" id="fireBtn">🔫</button>
+        <button class="btn" id="rightBtn">➡</button>
+    </div>
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-
-        const player = { x: 175, y: 450, width: 50, height: 50, speed: 5 };
-        let fallingObject = { x: Math.random() * 350, y: 0, width: 30, height: 30, speed: 2 };
-        let score = 0;
-        let missed = 0;
-        let gameRunning = true;
-
-        function drawPlayer() {
-            ctx.fillStyle = "red";
-            ctx.fillRect(player.x, player.y, player.width, player.height);
+        
+        let player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 20,
+            color: "white",
+            speed: 5
+        };
+        
+        let bullets = [];
+        let airships = [];
+        let keys = {};
+        
+        document.addEventListener("keydown", (e) => keys[e.key] = true);
+        document.addEventListener("keyup", (e) => keys[e.key] = false);
+        
+        function isMobile() {
+            return window.innerWidth <= 800;
         }
-
-        function drawObject() {
-            ctx.fillStyle = "green";
-            ctx.fillRect(fallingObject.x, fallingObject.y, fallingObject.width, fallingObject.height);
+        
+        if (isMobile()) {
+            document.querySelector(".controls").style.display = "block";
+            document.getElementById("leftBtn").addEventListener("touchstart", () => keys["ArrowLeft"] = true);
+            document.getElementById("leftBtn").addEventListener("touchend", () => keys["ArrowLeft"] = false);
+            document.getElementById("rightBtn").addEventListener("touchstart", () => keys["ArrowRight"] = true);
+            document.getElementById("rightBtn").addEventListener("touchend", () => keys["ArrowRight"] = false);
+            document.getElementById("fireBtn").addEventListener("touchstart", () => keys[" "] = true);
         }
-
-        function updateObject() {
-            fallingObject.y += fallingObject.speed;
-            if (fallingObject.y > canvas.height) {
-                fallingObject.x = Math.random() * 350;
-                fallingObject.y = 0;
-                missed++;
-                if (missed >= 3) {
-                    gameRunning = false;
-                    alert("Game Over! Your Score: " + score);
-                }
+        
+        function spawnAirships() {
+            for (let i = 0; i < 5; i++) {
+                airships.push({
+                    x: Math.random() * (canvas.width - 50),
+                    y: Math.random() * (canvas.height / 3),
+                    width: 50,
+                    height: 30,
+                    color: "gray",
+                    speed: Math.random() * 2 + 1
+                });
             }
         }
-
-        function checkCollision() {
-            if (
-                fallingObject.y + fallingObject.height >= player.y &&
-                fallingObject.x + fallingObject.width >= player.x &&
-                fallingObject.x <= player.x + player.width
-            ) {
-                score++;
-                fallingObject.x = Math.random() * 350;
-                fallingObject.y = 0;
-            }
-        }
-
-        document.addEventListener("keydown", function (event) {
-            if (event.key === "ArrowLeft" && player.x > 0) {
+        
+        function update() {
+            if (keys["ArrowLeft"] && player.x > 0) {
                 player.x -= player.speed;
-            } else if (event.key === "ArrowRight" && player.x < canvas.width - player.width) {
+            }
+            if (keys["ArrowRight"] && player.x < canvas.width - player.width) {
                 player.x += player.speed;
             }
-        });
-
-        function gameLoop() {
-            if (!gameRunning) return;
+            if (keys[" "]) {
+                bullets.push({ x: player.x + player.width / 2 - 2.5, y: player.y, width: 5, height: 10, color: "red", speed: 7 });
+                keys[" "] = false; 
+            }
+            
+            bullets.forEach((bullet, bIndex) => {
+                bullet.y -= bullet.speed;
+                if (bullet.y < 0) bullets.splice(bIndex, 1);
+                
+                airships.forEach((airship, aIndex) => {
+                    if (
+                        bullet.x < airship.x + airship.width &&
+                        bullet.x + bullet.width > airship.x &&
+                        bullet.y < airship.y + airship.height &&
+                        bullet.y + bullet.height > airship.y
+                    ) {
+                        bullets.splice(bIndex, 1);
+                        airships.splice(aIndex, 1);
+                    }
+                });
+            });
+            
+            airships.forEach(airship => {
+                airship.x += Math.sin(Date.now() / 1000) * airship.speed;
+            });
+        }
+        
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawPlayer();
-            drawObject();
-            updateObject();
-            checkCollision();
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+            
+            airships.forEach(airship => {
+                ctx.fillStyle = airship.color;
+                ctx.fillRect(airship.x, airship.y, airship.width, airship.height);
+            });
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
             requestAnimationFrame(gameLoop);
         }
-
+        
+        spawnAirships();
         gameLoop();
     </script>
 </body>
