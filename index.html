@@ -11,7 +11,6 @@
         .controls {
             text-align: center;
             margin-top: 10px;
-            display: none;
         }
         .btn {
             width: 60px;
@@ -19,9 +18,9 @@
             margin: 5px;
             font-size: 20px;
         }
-        @media (max-width: 800px) {
+        @media (min-width: 801px) {
             .controls {
-                display: block;
+                display: none;
             }
         }
     </style>
@@ -53,18 +52,11 @@
         document.addEventListener("keydown", (e) => keys[e.key] = true);
         document.addEventListener("keyup", (e) => keys[e.key] = false);
         
-        function isMobile() {
-            return window.innerWidth <= 800;
-        }
-        
-        if (isMobile()) {
-            document.querySelector(".controls").style.display = "block";
-            document.getElementById("leftBtn").addEventListener("touchstart", () => keys["ArrowLeft"] = true);
-            document.getElementById("leftBtn").addEventListener("touchend", () => keys["ArrowLeft"] = false);
-            document.getElementById("rightBtn").addEventListener("touchstart", () => keys["ArrowRight"] = true);
-            document.getElementById("rightBtn").addEventListener("touchend", () => keys["ArrowRight"] = false);
-            document.getElementById("fireBtn").addEventListener("touchstart", () => keys[" "] = true);
-        }
+        document.getElementById("leftBtn").addEventListener("touchstart", () => keys["ArrowLeft"] = true);
+        document.getElementById("leftBtn").addEventListener("touchend", () => keys["ArrowLeft"] = false);
+        document.getElementById("rightBtn").addEventListener("touchstart", () => keys["ArrowRight"] = true);
+        document.getElementById("rightBtn").addEventListener("touchend", () => keys["ArrowRight"] = false);
+        document.getElementById("fireBtn").addEventListener("touchstart", () => { keys[" "] = true; setTimeout(() => { keys[" "] = false; }, 100); });
         
         function spawnAirships() {
             for (let i = 0; i < 5; i++) {
