@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Falling Object Game</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background: lightblue;
+            display: block;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Catch the Falling Object!</h1>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const player = { x: 175, y: 450, width: 50, height: 50, speed: 5 };
+        let fallingObject = { x: Math.random() * 350, y: 0, width: 30, height: 30, speed: 2 };
+        let score = 0;
+        let missed = 0;
+        let gameRunning = true;
+
+        function drawPlayer() {
+            ctx.fillStyle = "red";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function drawObject() {
+            ctx.fillStyle = "green";
+            ctx.fillRect(fallingObject.x, fallingObject.y, fallingObject.width, fallingObject.height);
+        }
+
+        function updateObject() {
+            fallingObject.y += fallingObject.speed;
+            if (fallingObject.y > canvas.height) {
+                fallingObject.x = Math.random() * 350;
+                fallingObject.y = 0;
+                missed++;
+                if (missed >= 3) {
+                    gameRunning = false;
+                    alert("Game Over! Your Score: " + score);
+                }
+            }
+        }
+
+        function checkCollision() {
+            if (
+                fallingObject.y + fallingObject.height >= player.y &&
+                fallingObject.x + fallingObject.width >= player.x &&
+                fallingObject.x <= player.x + player.width
+            ) {
+                score++;
+                fallingObject.x = Math.random() * 350;
+                fallingObject.y = 0;
+            }
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "ArrowLeft" && player.x > 0) {
+                player.x -= player.speed;
+            } else if (event.key === "ArrowRight" && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+        });
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer();
+            drawObject();
+            updateObject();
+            checkCollision();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
