@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PC Vision — Analyze Your Computer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f8f9fb;
+      --white: #ffffff;
+      --border: #e5e7eb;
+      --border-light: #f0f0f3;
+      --text: #1f2937;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --primary: #6366f1;
+      --primary-light: #eef2ff;
+      --primary-dark: #4f46e5;
+      --green: #22c55e;
+      --green-light: #f0fdf4;
+      --green-dark: #16a34a;
+      --orange: #f59e0b;
+      --orange-light: #fffbeb;
+      --red: #ef4444;
+      --red-light: #fef2f2;
+      --blue: #3b82f6;
+      --blue-light: #eff6ff;
+      --pink: #ec4899;
+      --pink-light: #fdf2f8;
+      --teal: #14b8a6;
+      --teal-light: #f0fdfa;
+      --purple: #8b5cf6;
+      --purple-light: #f5f3ff;
+      --indigo: #6366f1;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+      --radius: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    /* ── HERO ICON ── */
+    .hero-icon {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .hero-icon .icon-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--primary-light);
+      font-size: 30px;
+      position: relative;
+    }
+    .hero-icon .sparkle {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      font-size: 16px;
+    }
+
+    .hero-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .hero-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--white);
+    }
+    .upload-zone:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .upload-zone.drag-over {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+
+    .upload-zone .upload-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 12px;
+      border-radius: 14px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .upload-zone h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .upload-zone p {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .image-preview {
+      display: none;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+      margin-top: 12px;
+    }
+    .image-preview img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+    }
+    .image-preview .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(239,68,68,0.9);
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── SECTION HEADINGS ── */
+    .section-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+      margin-top: 8px;
+    }
+
+    /* ── FORM ── */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-group label .field-icon {
+      font-size: 15px;
+      opacity: 0.7;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--white);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-group input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .form-group select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+
+    .form-group.error input,
+    .form-group.error select {
+      border-color: var(--red);
+    }
+    .form-error {
+      font-size: 12px;
+      color: var(--red);
+      margin-top: 4px;
+      display: none;
+    }
+    .form-group.error .form-error { display: block; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 500px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ── ANALYZE BUTTON ── */
+    .analyze-btn {
+      width: 100%;
+      padding: 14px 24px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    }
+    .analyze-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.4);
+    }
+    .analyze-btn:active { transform: translateY(0); }
+    .analyze-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── FOOTER BADGES ── */
+    .footer-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .footer-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .footer-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    /* ── LOADING OVERLAY ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(248,249,251,0.92);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+    }
+    .loading-overlay.active { display: flex; }
+
+    .loading-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      max-width: 420px;
+      width: 90%;
+    }
+    .loading-card .loading-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      border-radius: 18px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      position: relative;
+      animation: loadPulse 2s ease-in-out infinite;
+    }
+    .loading-card .loading-icon .sparkle {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      font-size: 14px;
+      animation: sparkleRotate 3s linear infinite;
+    }
+    @keyframes loadPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    @keyframes sparkleRotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .loading-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .bouncing-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .bouncing-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.4s ease-in-out infinite;
+    }
+    .bouncing-dots .dot:nth-child(2) { animation-delay: 0.16s; }
+    .bouncing-dots .dot:nth-child(3) { animation-delay: 0.32s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-10px); opacity: 1; }
+    }
+
+    /* ── RESULTS SECTION ── */
+    .results-section {
+      display: none;
+    }
+    .results-section.visible { display: block; }
+
+    /* ── BEST SUITED FOR ── */
+    .verdict-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .verdict-card .verdict-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .verdict-card .verdict-icon.gaming { background: var(--green-light); }
+    .verdict-card .verdict-icon.work { background: var(--blue-light); }
+    .verdict-card .verdict-icon.editing { background: var(--purple-light); }
+    .verdict-card .verdict-icon.allround { background: var(--orange-light); }
+
+    .verdict-card .verdict-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 2px;
+    }
+    .verdict-card .verdict-label.gaming { color: var(--green); }
+    .verdict-card .verdict-label.work { color: var(--blue); }
+    .verdict-card .verdict-label.editing { color: var(--purple); }
+    .verdict-card .verdict-label.allround { color: var(--orange); }
+
+    .verdict-card .verdict-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .verdict-card .verdict-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── CATEGORY BARS ── */
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .category-row {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .category-row:last-child { border-bottom: none; }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .category-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .category-name {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .category-name .best-check {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-size: 11px;
+      align-items: center;
+      justify-content: center;
+    }
+    .category-name .best-check.show { display: inline-flex; }
+
+    .category-pct {
+      font-size: 16px;
+      font-weight: 700;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .category-bar {
+      width: 100%;
+      height: 8px;
+      background: #f1f3f5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .category-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s ease;
+    }
+
+    /* Category colors */
+    .cat-office .category-icon { background: var(--blue-light); }
+    .cat-office .category-pct { color: var(--blue); }
+    .cat-office .category-bar-fill { background: var(--blue); }
+
+    .cat-gaming .category-icon { background: var(--green-light); }
+    .cat-gaming .category-pct { color: var(--green); }
+    .cat-gaming .category-bar-fill { background: var(--green); }
+
+    .cat-editing .category-icon { background: var(--blue-light); }
+    .cat-editing .category-pct { color: var(--blue); }
+    .cat-editing .category-bar-fill { background: var(--blue); }
+
+    .cat-streaming .category-icon { background: var(--pink-light); }
+    .cat-streaming .category-pct { color: var(--pink); }
+    .cat-streaming .category-bar-fill { background: var(--pink); }
+
+    .cat-coding .category-icon { background: var(--teal-light); }
+    .cat-coding .category-pct { color: var(--teal); }
+    .cat-coding .category-bar-fill { background: var(--teal); }
+
+    .cat-battery .category-icon { background: var(--green-light); }
+    .cat-battery .category-pct { color: var(--green-dark); }
+    .cat-battery .category-bar-fill { background: var(--green); }
+
+    .cat-allround .category-icon { background: var(--orange-light); }
+    .cat-allround .category-pct { color: var(--orange); }
+    .cat-allround .category-bar-fill { background: var(--orange); }
+
+    /* ── AI RECOMMENDATIONS ── */
+    .ai-rec-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .ai-rec-card .rec-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .ai-rec-card .rec-icon.tip { background: var(--orange-light); }
+    .ai-rec-card .rec-icon.warn { background: var(--red-light); }
+
+    .ai-rec-card .rec-body { flex: 1; }
+    .ai-rec-card .rec-body h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .ai-rec-card .rec-body p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ── UPGRADE CARDS (Desktop) ── */
+    .upgrade-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .upgrade-card .uc-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .upgrade-card .uc-icon {
+      font-size: 20px;
+    }
+    .upgrade-card .uc-title {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .upgrade-card .uc-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .uc-badge.high { background: var(--red-light); color: var(--red); }
+    .uc-badge.medium { background: var(--orange-light); color: var(--orange); }
+    .uc-badge.low { background: var(--green-light); color: var(--green); }
+
+    .upgrade-card .uc-specs {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .upgrade-card .uc-specs span.from { color: var(--red); }
+    .upgrade-card .uc-specs span.to { color: var(--green); font-weight: 600; }
+
+    .upgrade-card .uc-reason {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+
+    /* ── LAPTOP CARDS ── */
+    .laptop-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+    }
+    .laptop-card:hover { box-shadow: var(--shadow-md); }
+
+    .laptop-card .lc-header {
+      padding: 16px 20px 12px;
+    }
+    .laptop-card .lc-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .laptop-card .lc-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .laptop-card .lc-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .lc-badge.top-pick { background: var(--green-light); color: var(--green-dark); }
+    .lc-badge.editors-choice { background: var(--blue-light); color: var(--blue); }
+    .lc-badge.best-value { background: var(--green-light); color: var(--green-dark); }
+
+    .laptop-card .lc-price-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .laptop-card .lc-price {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .laptop-card .lc-price .dollar { color: var(--text-muted); font-weight: 500; }
+    .laptop-card .lc-rating {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--orange);
+    }
+
+    .laptop-card .lc-desc {
+      padding: 0 20px 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .laptop-card .lc-why-toggle {
+      padding: 0 20px 12px;
+    }
+    .laptop-card .lc-why-btn {
+      background: none;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .laptop-card .lc-why-btn:hover { text-decoration: underline; }
+    .laptop-card .lc-why-content {
+      display: none;
+      padding: 10px 20px 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      background: var(--bg);
+      margin: 0 12px 12px;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .laptop-card .lc-why-content.open { display: block; }
+
+    .laptop-card .lc-footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 20px;
+      text-align: center;
+    }
+    .laptop-card .lc-amazon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s;
+      width: 100%;
+    }
+    .laptop-card .lc-amazon-btn:hover { color: var(--primary); }
+
+    /* ── ANALYZE ANOTHER ── */
+    .analyze-another-btn {
+      width: 100%;
+      padding: 14px 24px;
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--white);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+    .analyze-another-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .file-input { display: none; }
+
+    /* ── PRINT ── */
+    @media print {
+      .analyze-btn, .footer-badges, .loading-overlay, .analyze-another-btn { display: none !important; }
+      .card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-card">
+      <div class="loading-icon">
+        <span>🖥️</span>
+        <span class="sparkle">✨</span>
+      </div>
+      <h3>Analyzing Your PC</h3>
+      <p>Our AI is examining your hardware specs and searching for the best upgrade advice...</p>
+      <div class="bouncing-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ═══ INPUT SECTION ═══ -->
+    <div id="inputSection">
+      <div class="hero-icon">
+        <div class="icon-wrap">
+          🖥️
+          <span class="sparkle">✨</span>
+        </div>
+      </div>
+      <h1 class="hero-title">PC Analyzer</h1>
+      <p class="hero-subtitle">Upload a photo of your computer and share its specs —<br>our AI will tell you what it's best suited for.</p>
+
+      <!-- Upload -->
+      <div class="card">
+        <input type="file" class="file-input" id="fileInput" accept="image/*" />
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-icon">📸</div>
+          <h3>Drop your PC image here</h3>
+          <p>or click to browse · PNG, JPG up to 10MB</p>
+        </div>
+        <div class="image-preview" id="imagePreview">
+          <img src="" alt="PC Preview" id="previewImg" />
+          <button class="remove-btn" id="removeBtn">✕</button>
+        </div>
+      </div>
+
+      <!-- Specs Form -->
+      <div class="card">
+        <h2 class="section-heading">PC Specifications</h2>
+
+        <div class="form-group" id="grpType">
+          <label><span class="field-icon">🖥️</span> Device Type</label>
+          <select id="pcType">
+            <option value="" disabled selected>Select device type</option>
+            <option value="desktop">Desktop PC</option>
+            <option value="laptop">Laptop</option>
+          </select>
+          <div class="form-error">Please select a device type</div>
+        </div>
+
+        <div class="form-group" id="grpCpu">
+          <label><span class="field-icon">⚙️</span> Processor (CPU)</label>
+          <input type="text" id="pcCpu" placeholder="e.g. Intel i7-13700K, AMD Ryzen 9" />
+          <div class="form-error">Please enter your CPU</div>
+        </div>
+
+        <div class="form-group" id="grpGpu">
+          <label><span class="field-icon">🖼️</span> Graphics Card (GPU)</label>
+          <input type="text" id="pcGpu" placeholder="e.g. RTX 4070, RX 7800 XT" />
+          <div class="form-error">Please enter your GPU</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" id="grpRam">
+            <label><span class="field-icon">💾</span> RAM</label>
+            <select id="pcRam">
+              <option value="" disabled selected>Select RAM</option>
+              <option value="4">4 GB</option>
+              <option value="8">8 GB</option>
+              <option value="16">16 GB</option>
+              <option value="32">32 GB</option>
+              <option value="64">64 GB</option>
+              <option value="128">128 GB</option>
+            </select>
+            <div class="form-error">Select RAM</div>
+          </div>
+
+          <div class="form-group" id="grpStorage">
+            <label><span class="field-icon">📦</span> Storage Type</label>
+            <select id="pcStorage">
+              <option value="" disabled selected>Select storage</option>
+              <option value="128ssd">NVMe 128GB</option>
+              <option value="256ssd">NVMe 256GB</option>
+              <option value="512ssd">NVMe 512GB</option>
+              <option value="1000ssd">NVMe 1TB</option>
+              <option value="2000ssd">NVMe 2TB</option>
+              <option value="1000hdd">HDD 1TB</option>
+              <option value="2000hdd">HDD 2TB</option>
+              <option value="1000combo">SSD + HDD Combo</option>
+            </select>
+            <div class="form-error">Select storage</div>
+          </div>
+        </div>
+
+        <button type="button" class="analyze-btn" id="analyzeBtn">
+          Analyze My PC <span>→</span>
+        </button>
+      </div>
+
+      <div class="footer-badges">
+        <span class="footer-badge"><span class="dot"></span> AI-Powered Analysis</span>
+        <span class="footer-badge"><span class="dot"></span> Upgrade Advice</span>
+        <span class="footer-badge"><span class="dot"></span> Free to Use</span>
+      </div>
+    </div>
+
+    <!-- ═══ RESULTS SECTION ═══ -->
+    <div class="results-section" id="resultsSection">
+
+      <!-- Best Suited For -->
+      <div class="verdict-card" id="verdictCard">
+        <div class="verdict-icon" id="verdictIcon">⚡</div>
+        <div>
+          <div class="verdict-label" id="verdictLabel">BEST SUITED FOR</div>
+          <div class="verdict-name" id="verdictName">—</div>
+          <div class="verdict-desc" id="verdictDesc">Complete the analysis to see results.</div>
+        </div>
+      </div>
+
+      <!-- Detailed Analysis -->
+      <div class="card">
+        <h2 class="section-heading">Detailed Analysis</h2>
+        <div class="category-list" id="categoryList"></div>
+      </div>
+
+      <!-- AI Recommendations -->
+      <div id="aiRecSection"></div>
+
+      <!-- Upgrade Advice (Desktop) -->
+      <div id="desktopUpgrades" style="display:none">
+        <h2 class="section-heading" style="margin-top:24px;">🔧 Upgrade Recommendations</h2>
+        <div id="upgradeList"></div>
+      </div>
+
+      <!-- Laptop Alternatives -->
+      <div id="laptopAlternatives" style="display:none">
+        <h2 class="section-heading" style="margin-top:24px; display:flex; align-items:center; gap:8px;">
+          🛒 Better Laptops at Similar Price
+        </h2>
+        <div id="laptopList"></div>
+      </div>
+
+      <!-- Analyze Another -->
+      <button class="analyze-another-btn" id="analyzeAnotherBtn">
+        🔄 Analyze Another PC
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════════
+  //  PC VISION — ANALYSIS ENGINE
+  // ═══════════════════════════════════════════════════════════════════
+
+  const $ = id => document.getElementById(id);
+  const fileInput   = $('fileInput');
+  const uploadZone  = $('uploadZone');
+  const imagePreview= $('imagePreview');
+  const previewImg  = $('previewImg');
+  const removeBtn   = $('removeBtn');
+  const analyzeBtn  = $('analyzeBtn');
+
+  // ═══ IMAGE UPLOAD ══════════════════════════════════════════════════
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      uploadZone.style.display = 'none';
+      imagePreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeBtn.addEventListener('click', () => {
+    previewImg.src = '';
+    fileInput.value = '';
+    imagePreview.style.display = 'none';
+    uploadZone.style.display = '';
+  });
+
+  // ═══ FORM VALIDATION ══════════════════════════════════════════════
+  const fields = ['Type','Cpu','Gpu','Ram','Storage'];
+
+  function validate() {
+    let ok = true;
+    fields.forEach(f => {
+      const el = $('pc' + f);
+      const grp = $('grp' + f);
+      const empty = el.tagName === 'SELECT' ? !el.value : !el.value.trim();
+      grp.classList.toggle('error', empty);
+      if (empty) ok = false;
+    });
+    return ok;
+  }
+
+  fields.forEach(f => {
+    const el = $('pc' + f);
+    el.addEventListener('input', () => $('grp' + f).classList.remove('error'));
+    el.addEventListener('change', () => $('grp' + f).classList.remove('error'));
+  });
+
+  // ═══ CPU DATABASE ══════════════════════════════════════════════════
+  const cpuDB = [
+    { patterns: ['celeron','pentium','n4','n5','j4','j5','n100','n200','n95'], tier: 1, name: 'Budget Intel', tdp: 15 },
+    { patterns: ['i3-[789]','i3-1[0-2]','i3 [789]','i3 1[0-2]'], tier: 2, name: 'Intel i3', tdp: 65 },
+    { patterns: ['i5-[789]','i5-1[0-2]','i5 [789]','i5 1[0-2]'], tier: 3, name: 'Intel i5', tdp: 65 },
+    { patterns: ['i5-1[3-5]','i5 1[3-5]','i7-[789]','i7-1[0-2]','i7 [789]','i7 1[0-2]'], tier: 4, name: 'Intel i7', tdp: 125 },
+    { patterns: ['i7-1[3-5]','i7 1[3-5]','i9','ultra 5','ultra 7','ultra 9'], tier: 5, name: 'Intel High-End', tdp: 150 },
+    { patterns: ['athlon','a6','a8','a10','ryzen 3 [12]','ryzen 3-[12]','r3 [12]'], tier: 1, name: 'Budget AMD', tdp: 35 },
+    { patterns: ['ryzen 3','r3'], tier: 2, name: 'Ryzen 3', tdp: 65 },
+    { patterns: ['ryzen 5 [1-4]','ryzen 5-[1-4]','r5 [1-4]','ryzen 5 5','r5 5'], tier: 3, name: 'Ryzen 5', tdp: 65 },
+    { patterns: ['ryzen 5 [6-9]','ryzen 5-[6-9]','r5 [6-9]','ryzen 7','r7'], tier: 4, name: 'Ryzen 7', tdp: 105 },
+    { patterns: ['ryzen 9','r9','threadripper','epyc'], tier: 5, name: 'Ryzen 9/TR', tdp: 170 },
+    { patterns: ['m1 pro','m1 max','m2 pro','m2 max','m3 pro','m3 max','m4 pro','m4 max'], tier: 5, name: 'Apple Pro', tdp: 30 },
+    { patterns: ['m1','m2','m3','m4'], tier: 4, name: 'Apple M-Series', tdp: 20 },
+  ];
+
+  function getCpuTier(cpuStr) {
+    const s = cpuStr.toLowerCase();
+    for (const entry of cpuDB) {
+      for (const p of entry.patterns) {
+        if (new RegExp(p).test(s)) return { ...entry };
+      }
+    }
+    if (/i7|ryzen 7|r7/i.test(s)) return { tier: 4, name: 'High-end CPU', tdp: 125 };
+    if (/i5|ryzen 5|r5/i.test(s)) return { tier: 3, name: 'Mid-range CPU', tdp: 65 };
+    if (/i9|ryzen 9|r9/i.test(s)) return { tier: 5, name: 'Top-tier CPU', tdp: 150 };
+    if (/i3|ryzen 3|r3/i.test(s)) return { tier: 2, name: 'Entry CPU', tdp: 65 };
+    if (/xeon|epyc/i.test(s)) return { tier: 5, name: 'Server CPU', tdp: 200 };
+    return { tier: 2, name: 'Unknown CPU', tdp: 65 };
+  }
+
+  // ═══ GPU DATABASE ══════════════════════════════════════════════════
+  const gpuDB = [
+    { patterns: ['integrated','intel hd','intel uhd','iris','vega [3-8]','radeon graphics','apu'], tier: 1, name: 'Integrated GPU', tdp: 15, vram: 0 },
+    { patterns: ['gt 1030','gtx 1050','gtx 1630','mx[1-5]','mx 1','mx 2','mx 3','mx 4','mx 5'], tier: 2, name: 'Entry NVIDIA', tdp: 75, vram: 2 },
+    { patterns: ['gtx 1060','gtx 1650','gtx 1660','rtx 2060','rtx 3050','rtx 4050'], tier: 3, name: 'Mid-range NVIDIA', tdp: 120, vram: 6 },
+    { patterns: ['rtx 2070','rtx 3060','rtx 4060','rtx 5060'], tier: 4, name: 'Strong NVIDIA', tdp: 150, vram: 8 },
+    { patterns: ['rtx 2080','rtx 3070','rtx 3080','rtx 4070','rtx 5070'], tier: 5, name: 'High-end NVIDIA', tdp: 220, vram: 12 },
+    { patterns: ['rtx 3090','rtx 4080','rtx 4090','rtx 5080','rtx 5090','titan','a100','h100','a6000'], tier: 6, name: 'Top NVIDIA', tdp: 350, vram: 24 },
+    { patterns: ['rx 550','rx 560','rx 6400','rx 6500'], tier: 2, name: 'Entry AMD GPU', tdp: 75, vram: 4 },
+    { patterns: ['rx 570','rx 580','rx 590','rx 5500','rx 6600','rx 7600'], tier: 3, name: 'Mid AMD GPU', tdp: 150, vram: 8 },
+    { patterns: ['rx 5600','rx 5700','rx 6700','rx 6750','rx 7700','rx 7800'], tier: 4, name: 'Strong AMD GPU', tdp: 180, vram: 12 },
+    { patterns: ['rx 6800','rx 6900','rx 6950','rx 7900','rx 9070'], tier: 5, name: 'High-end AMD GPU', tdp: 250, vram: 16 },
+  ];
+
+  function getGpuTier(gpuStr) {
+    const s = gpuStr.toLowerCase();
+    for (const entry of gpuDB) {
+      for (const p of entry.patterns) {
+        if (new RegExp(p).test(s)) return { ...entry };
+      }
+    }
+    if (/rtx/i.test(s)) return { tier: 4, name: 'RTX GPU', tdp: 180, vram: 8 };
+    if (/gtx/i.test(s)) return { tier: 3, name: 'GTX GPU', tdp: 120, vram: 6 };
+    if (/rx/i.test(s)) return { tier: 3, name: 'Radeon GPU', tdp: 150, vram: 8 };
+    if (/gt /i.test(s)) return { tier: 2, name: 'Basic GPU', tdp: 75, vram: 2 };
+    return { tier: 1, name: 'Unknown GPU', tdp: 15, vram: 0 };
+  }
+
+  // ═══ SCORING ENGINE ════════════════════════════════════════════════
+  function analyzeSpecs() {
+    const cpu = getCpuTier($('pcCpu').value);
+    const gpu = getGpuTier($('pcGpu').value);
+    const ram = parseInt($('pcRam').value);
+    const storageVal = $('pcStorage').value;
+    const typeVal = $('pcType').value;
+
+    const ramTier = ram <= 4 ? 1 : ram <= 8 ? 2 : ram <= 16 ? 3 : ram <= 32 ? 4 : 5;
+    const isHDD = storageVal.includes('hdd');
+    const isSSD = storageVal.includes('ssd');
+    const isCombo = storageVal.includes('combo');
+    const storageTier = isHDD ? 1 : isCombo ? 3 : isSSD ? (parseInt(storageVal) >= 1000 ? 4 : parseInt(storageVal) >= 512 ? 3 : 2) : 2;
+
+    // Office & Productivity
+    const workRaw = (cpu.tier * 3 + ramTier * 2.5 + storageTier * 2 + gpu.tier * 0.5) / 8;
+    const work = Math.min(100, Math.round(workRaw / 5 * 100));
+
+    // Gaming
+    const gamingRaw = (gpu.tier * 3.5 + cpu.tier * 1.5 + ramTier * 1.5 + storageTier * 0.5) / 7;
+    const gaming = Math.min(100, Math.round((gamingRaw / (gpu.tier <= 1 ? 6 : 5)) * 100));
+
+    // Video & Photo Editing
+    const editRaw = (gpu.tier * 2.5 + cpu.tier * 2 + ramTier * 2.5 + storageTier * 1.5) / 8.5;
+    const editing = Math.min(100, Math.round(editRaw / 5 * 100));
+
+    // Streaming & Browsing
+    const streamRaw = (cpu.tier * 2 + ramTier * 3 + storageTier * 1.5 + gpu.tier * 1.5) / 8;
+    const streaming = Math.min(100, Math.round(streamRaw / 5 * 100));
+
+    // Coding & Development
+    const codeRaw = (cpu.tier * 2.5 + ramTier * 3 + storageTier * 2 + gpu.tier * 0.5) / 8;
+    const coding = Math.min(100, Math.round(codeRaw / 5 * 100));
+
+    // Battery / Efficiency (lower TDP = better for laptops)
+    const totalTDP = (cpu.tdp || 65) + (gpu.tdp || 15);
+    const battery = typeVal === 'laptop'
+      ? Math.min(100, Math.max(20, Math.round(100 - totalTDP * 0.35)))
+      : Math.min(100, Math.max(30, Math.round(90 - totalTDP * 0.15)));
+
+    // All-Rounder
+    const allround = Math.round((work + gaming + editing + streaming + coding) / 5);
+
+    return {
+      work, gaming, editing, streaming, coding, battery, allround,
+      cpu, gpu, ram, ramTier, storageTier, storageVal, typeVal,
+      isHDD, isSSD, isCombo,
+      cpuRaw: $('pcCpu').value, gpuRaw: $('pcGpu').value
+    };
+  }
+
+  // ═══ RENDER RESULTS ════════════════════════════════════════════════
+  const categories = [
+    { key: 'work',      name: 'Office & Productivity', icon: '🏢', cls: 'cat-office' },
+    { key: 'gaming',    name: 'Gaming',                icon: '🎮', cls: 'cat-gaming' },
+    { key: 'editing',   name: 'Video & Photo Editing', icon: '🎬', cls: 'cat-editing' },
+    { key: 'streaming', name: 'Streaming & Browsing',  icon: '📺', cls: 'cat-streaming' },
+    { key: 'coding',    name: 'Coding & Development',  icon: '💻', cls: 'cat-coding' },
+    { key: 'battery',   name: 'Battery / Efficiency',  icon: '🔋', cls: 'cat-battery' },
+    { key: 'allround',  name: 'All-Rounder',           icon: '🌟', cls: 'cat-allround' },
+  ];
+
+  function renderCategories(result) {
+    const list = $('categoryList');
+    // Find best (excluding allround and battery)
+    const mainScores = categories.filter(c => !['allround','battery'].includes(c.key));
+    const bestKey = mainScores.sort((a,b) => result[b.key] - result[a.key])[0].key;
+
+    list.innerHTML = categories.map(cat => {
+      const score = result[cat.key];
+      const isBest = cat.key === bestKey;
+      return `
+        <div class="category-row ${cat.cls}">
+          <div class="category-header">
+            <div class="category-icon">${cat.icon}</div>
+            <div class="category-name">
+              ${cat.name}
+              <span class="best-check ${isBest ? 'show' : ''}">✓</span>
+            </div>
+            <div class="category-pct">${score}%</div>
+          </div>
+          <div class="category-bar">
+            <div class="category-bar-fill" style="width: 0%" data-target="${score}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Animate bars
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        list.querySelectorAll('.category-bar-fill').forEach(bar => {
+          bar.style.width = bar.dataset.target + '%';
+        });
+      }, 50);
+    });
+
+    return bestKey;
+  }
+
+  function renderVerdict(result, bestKey) {
+    const verdictMap = {
+      work: { icon: '💼', label: 'work', name: 'Office & Productivity',
+        desc: 'This PC is optimized for general productivity and performs well in office applications, browsing, and everyday computing tasks.' },
+      gaming: { icon: '⚡', label: 'gaming', name: 'Gaming',
+        desc: 'This ' + (result.typeVal === 'laptop' ? 'laptop' : 'PC') + ' is optimized for gaming and performs well in general productivity and content creation tasks.' },
+      editing: { icon: '🎬', label: 'editing', name: 'Video & Photo Editing',
+        desc: 'This system excels at content creation — video editing, photo manipulation, and rendering. Strong in creative workloads.' },
+      streaming: { icon: '📺', label: 'work', name: 'Streaming & Browsing',
+        desc: 'This system is best suited for media consumption, streaming, and web browsing with smooth multitasking.' },
+      coding: { icon: '💻', label: 'work', name: 'Coding & Development',
+        desc: 'This system handles development workloads well — IDEs, compilers, containers, and multitasking.' },
+    };
+
+    // If allround is high enough, show as all-rounder
+    if (result.allround >= 75) {
+      $('verdictIcon').textContent = '🚀';
+      $('verdictIcon').className = 'verdict-icon allround';
+      $('verdictLabel').textContent = 'BEST SUITED FOR';
+      $('verdictLabel').className = 'verdict-label allround';
+      $('verdictName').textContent = 'All-Rounder';
+      $('verdictDesc').textContent = 'This ' + (result.typeVal === 'laptop' ? 'laptop' : 'PC') + ' is well-balanced and handles gaming, editing, productivity, and development without major compromises.';
+    } else {
+      const v = verdictMap[bestKey] || verdictMap.work;
+      $('verdictIcon').textContent = v.icon;
+      $('verdictIcon').className = 'verdict-icon ' + v.label;
+      $('verdictLabel').textContent = 'BEST SUITED FOR';
+      $('verdictLabel').className = 'verdict-label ' + v.label;
+      $('verdictName').textContent = v.name;
+      $('verdictDesc').textContent = v.desc;
+    }
+  }
+
+  // ═══ AI RECOMMENDATIONS ═════════════════════════════════════════════
+  function renderAIAdvice(result) {
+    const section = $('aiRecSection');
+    let html = '<h2 class="section-heading" style="margin-top:24px;">AI Recommendations</h2>';
+
+    // Main advice
+    const cpuName = result.cpuRaw;
+    const gpuName = result.gpuRaw;
+    const ramGB = result.ram;
+
+    let mainAdvice = '';
+    if (result.allround >= 80) {
+      mainAdvice = `The ${cpuName} and ${gpuName} make this ${result.typeVal} a strong performer for gaming and demanding applications, while ${ramGB} GB of RAM ensures smooth multitasking. `;
+      if (result.typeVal === 'laptop') mainAdvice += 'Users who also prioritize battery life might want to consider models with more efficient designs, but overall, this laptop offers a great balance of power for gaming and creative work.';
+      else mainAdvice += 'This desktop build is well-balanced and should handle anything you throw at it for years to come.';
+    } else if (result.gaming >= 70) {
+      mainAdvice = `The ${gpuName} provides strong gaming performance, and the ${cpuName} handles game logic well. ${ramGB}GB RAM is ${ramGB >= 16 ? 'sufficient' : 'tight'} for modern gaming. `;
+      if (result.editing < 50) mainAdvice += 'For content creation, consider upgrading RAM and storage capacity.';
+    } else if (result.work >= 70) {
+      mainAdvice = `This ${result.typeVal} is well-suited for daily productivity with the ${cpuName}. ${ramGB}GB RAM handles office apps and browsing smoothly. `;
+      if (result.gaming < 50) mainAdvice += 'Gaming and heavy creative work will be limited by the GPU. Consider a dedicated graphics card for those tasks.';
+    } else {
+      mainAdvice = `This ${result.typeVal} with ${cpuName} and ${gpuName} handles basic tasks but may struggle with demanding workloads. `;
+      if (ramGB <= 8) mainAdvice += `Upgrading from ${ramGB}GB to at least 16GB RAM would significantly improve multitasking. `;
+      if (result.gpu.tier <= 1) mainAdvice += 'Adding a dedicated GPU would unlock gaming and content creation capabilities.';
+    }
+
+    html += `<div class="ai-rec-card">
+      <div class="rec-icon tip">💡</div>
+      <div class="rec-body"><p>${mainAdvice}</p></div>
+    </div>`;
+
+    // Laptop upgrade warning
+    if (result.typeVal === 'laptop') {
+      html += `<div class="ai-rec-card">
+        <div class="rec-icon warn">⚠️</div>
+        <div class="rec-body">
+          <h4>Limited Upgrade Options</h4>
+          <p>Laptops have very limited upgrade paths — usually only RAM and storage can be swapped (and not always). For a significant performance boost, consider upgrading to a better laptop.</p>
+        </div>
+      </div>`;
+    }
+
+    section.innerHTML = html;
+  }
+
+  // ═══ DESKTOP UPGRADE ADVICE ═════════════════════════════════════════
+  function generateDesktopAdvice(result) {
+    const upgrades = [];
+
+    if (result.gpu.tier <= 1) {
+      upgrades.push({ icon: '🎮', priority: 'high', title: 'Add a Dedicated GPU',
+        from: result.gpu.name, to: 'RTX 4060 (8GB) or RX 7600 (8GB)',
+        reason: 'Integrated graphics severely limit gaming and video editing. A dedicated GPU unlocks hardware-accelerated rendering and smooth gaming.' });
+    } else if (result.gpu.tier <= 3) {
+      upgrades.push({ icon: '🎮', priority: 'high', title: 'Upgrade Your GPU',
+        from: result.gpu.name, to: 'RTX 4070 Super (12GB) or RX 7800 XT',
+        reason: 'Your GPU is the primary bottleneck. Upgrading gives dramatically faster gaming FPS, ray tracing, and rendering speed.' });
+    }
+
+    if (result.ramTier <= 1) {
+      upgrades.push({ icon: '🧠', priority: 'high', title: 'Upgrade RAM (Critical)',
+        from: result.ram + ' GB', to: '16 GB DDR4/DDR5 (minimum)',
+        reason: '4 GB is critically low. Windows alone uses ~3 GB. You cannot multitask or run modern browsers properly.' });
+    } else if (result.ramTier <= 2) {
+      upgrades.push({ icon: '🧠', priority: 'high', title: 'Increase RAM',
+        from: result.ram + ' GB', to: '32 GB DDR4 3200MHz / DDR5 5600MHz',
+        reason: '8 GB is barely enough. Chrome + a game will max it out, causing stutters and freezing.' });
+    }
+
+    if (result.isHDD && !result.isCombo) {
+      upgrades.push({ icon: '💾', priority: 'high', title: 'Switch to SSD',
+        from: 'HDD (Slow)', to: '1 TB NVMe Gen4 SSD',
+        reason: 'An HDD is the biggest bottleneck in any modern system. SSD makes boot time 8 seconds vs 2-3 minutes. Everything feels 10-50x faster.' });
+    }
+
+    if (result.cpu.tier <= 2) {
+      upgrades.push({ icon: '⚡', priority: result.cpu.tier <= 1 ? 'high' : 'medium', title: 'Upgrade CPU',
+        from: result.cpu.name, to: 'Intel i5-13400F / Ryzen 5 5600',
+        reason: 'Your budget CPU limits everything — browsing, multitasking, and gaming all suffer.' });
+    }
+
+    if (upgrades.length === 0) {
+      upgrades.push({ icon: '✅', priority: 'low', title: 'Your PC is Well-Equipped',
+        from: 'All specs are strong', to: 'Maintain & enjoy your build',
+        reason: 'Your system is well-balanced. Focus on keeping drivers updated and maintaining good thermals.' });
+    }
+
+    return upgrades;
+  }
+
+  function renderDesktopUpgrades(result) {
+    const upgrades = generateDesktopAdvice(result);
+    const container = $('upgradeList');
+
+    container.innerHTML = upgrades.map(u => `
+      <div class="upgrade-card">
+        <div class="uc-header">
+          <span class="uc-icon">${u.icon}</span>
+          <span class="uc-title">${u.title}</span>
+          <span class="uc-badge ${u.priority}">${u.priority === 'high' ? 'High Priority' : u.priority === 'medium' ? 'Medium' : 'Optional'}</span>
+        </div>
+        <div class="uc-specs">
+          <span class="from">${u.from}</span> → <span class="to">${u.to}</span>
+        </div>
+        <div class="uc-reason">${u.reason}</div>
+      </div>
+    `).join('');
+
+    $('desktopUpgrades').style.display = 'block';
+  }
+
+  // ═══ LAPTOP ALTERNATIVES ════════════════════════════════════════════
+  function generateLaptopAdvice(result) {
+    const specTier = Math.round((result.cpu.tier + result.gpu.tier + result.ramTier) / 3);
+
+    const allLaptops = [
+      { name: 'Acer Aspire 5', price: '$549', badge: 'Best Value', badgeCls: 'best-value', rating: '4.5/5', tier: 1,
+        desc: 'Great for everyday work with efficient processor and long battery life.',
+        why: 'Ryzen 5 7530U, Radeon Graphics, 16 GB DDR5, 512 GB NVMe, 15.6" FHD IPS, ~8 hrs battery. Ideal for students and office workers who need reliability on a budget.',
+        search: 'Acer Aspire 5 Ryzen 5' },
+      { name: 'Lenovo IdeaPad Slim 5', price: '$599', badge: "Editor's Choice", badgeCls: 'editors-choice', rating: '4.6/5', tier: 1,
+        desc: 'Compact, lightweight with excellent 2.2K display resolution.',
+        why: 'Ryzen 5 7535HS, Radeon 660M, 16 GB DDR5, 512 GB NVMe, 14" 2.2K IPS, ~10 hrs battery. Perfect for portability without sacrificing screen quality.',
+        search: 'Lenovo IdeaPad Slim 5 14' },
+      { name: 'HP Victus 16', price: '$749', badge: 'Best Value', badgeCls: 'best-value', rating: '4.3/5', tier: 2,
+        desc: 'Budget gaming laptop with dedicated RTX 4050 GPU for 1080p gaming.',
+        why: 'i5-13500H, RTX 4050 6GB, 16 GB DDR5, 512 GB NVMe, 16.1" 144Hz FHD, ~5 hrs battery. Great entry-point for gamers who also need productivity.',
+        search: 'HP Victus 16 RTX 4050' },
+      { name: 'ASUS TUF Gaming A15', price: '$899', badge: 'Top Pick', badgeCls: 'top-pick', rating: '4.5/5', tier: 2,
+        desc: 'Military-grade durability with RTX 4060 for AAA gaming at high settings.',
+        why: 'Ryzen 7 7735HS, RTX 4060 8GB, 16 GB DDR5, 512 GB NVMe, 15.6" 144Hz FHD, ~6 hrs battery. Handles gaming and video editing with CUDA acceleration.',
+        search: 'ASUS TUF Gaming A15 RTX 4060' },
+      { name: 'ASUS ROG Strix G15', price: '$1,499', badge: 'Top Pick', badgeCls: 'top-pick', rating: '4.7/5', tier: 3,
+        desc: 'A powerful gaming laptop with excellent thermal management and display.',
+        why: 'Ryzen 9 7945HX, RTX 4070 8GB, 16 GB DDR5, 1 TB NVMe, 15.6" 165Hz QHD, ~5 hrs battery. Top-tier for gaming and streaming simultaneously.',
+        search: 'ASUS ROG Strix G15' },
+      { name: 'Razer Blade 15', price: '$1,599', badge: "Editor's Choice", badgeCls: 'editors-choice', rating: '4.6/5', tier: 3,
+        desc: 'A sleek and powerful laptop with premium build quality and gaming performance.',
+        why: 'i7-13800H, RTX 4070 8GB, 16 GB DDR5, 1 TB NVMe, 15.6" 240Hz QHD, ~6 hrs battery. CNC aluminum build, per-key RGB, Thunderbolt 4.',
+        search: 'Razer Blade 15' },
+      { name: 'Dell XPS 15', price: '$1,749', badge: 'Best Value', badgeCls: 'best-value', rating: '4.8/5', tier: 3,
+        desc: 'Combines gaming capability with great aesthetics and display quality.',
+        why: 'i7-13700H, RTX 4060 8GB, 32 GB DDR5, 1 TB NVMe, 15.6" 3.5K OLED, ~8 hrs battery. Stunning OLED display with 100% DCI-P3 for creative work.',
+        search: 'Dell XPS 15' },
+      { name: 'MSI Raider GE78 HX', price: '$1,899', badge: 'Top Pick', badgeCls: 'top-pick', rating: '4.7/5', tier: 4,
+        desc: 'Desktop-replacement powerhouse with i9 + RTX 4080 for maximum performance.',
+        why: 'i9-14900HX, RTX 4080 12GB, 32 GB DDR5, 1 TB NVMe, 17" 240Hz QHD, ~4 hrs battery. Handles 4K editing, AAA gaming at max, and 3D rendering.',
+        search: 'MSI Raider GE78 HX RTX 4080' },
+      { name: 'ASUS ROG Zephyrus G16', price: '$1,649', badge: "Editor's Choice", badgeCls: 'editors-choice', rating: '4.8/5', tier: 4,
+        desc: 'Stunning OLED display with slim design and impressive battery life.',
+        why: 'i9-14900H, RTX 4070 8GB, 16 GB DDR5, 1 TB NVMe, 16" OLED 240Hz QHD, ~8 hrs battery. Perfect blacks, 100% DCI-P3 — best screen for creative pros.',
+        search: 'ASUS ROG Zephyrus G16 OLED' },
+    ];
+
+    let picks = allLaptops.filter(l => l.tier >= specTier && l.tier <= specTier + 2);
+    if (picks.length < 3) picks = allLaptops.filter(l => l.tier >= 2);
+    return picks.slice(0, 4);
+  }
+
+  function renderLaptopCards(result) {
+    const laptops = generateLaptopAdvice(result);
+    const container = $('laptopList');
+
+    container.innerHTML = laptops.map((l, i) => {
+      const searchUrl = 'https://www.amazon.com/s?k=' + encodeURIComponent(l.search);
+      const whyId = 'why-' + i;
+      return `
+        <div class="laptop-card">
+          <div class="lc-header">
+            <div class="lc-name-row">
+              <span class="lc-name">${l.name}</span>
+              <span class="lc-badge ${l.badgeCls}">${l.badge}</span>
+            </div>
+            <div class="lc-price-row">
+              <span class="lc-price"><span class="dollar">$</span> ${l.price.replace('$','')}</span>
+              <span class="lc-rating">★ ${l.rating}</span>
+            </div>
+          </div>
+          <div class="lc-desc">${l.desc}</div>
+          <div class="lc-why-toggle">
+            <button class="lc-why-btn" onclick="document.getElementById('${whyId}').classList.toggle('open'); this.querySelector('.arrow').textContent = document.getElementById('${whyId}').classList.contains('open') ? '▲' : '▼'">
+              Why this laptop? <span class="arrow">▼</span>
+            </button>
+          </div>
+          <div class="lc-why-content" id="${whyId}">${l.why}</div>
+          <div class="lc-footer">
+            <a class="lc-amazon-btn" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
+              🛒 View on Amazon ↗
+            </a>
+          </div>
+        </div>`;
+    }).join('');
+
+    $('laptopAlternatives').style.display = 'block';
+  }
+
+  // ═══ LOADING ANIMATION ═════════════════════════════════════════════
+  function showLoading() {
+    return new Promise(resolve => {
+      $('loadingOverlay').classList.add('active');
+      setTimeout(() => {
+        $('loadingOverlay').classList.remove('active');
+        resolve();
+      }, 2500);
+    });
+  }
+
+  // ═══ MAIN ANALYZE ══════════════════════════════════════════════════
+  analyzeBtn.addEventListener('click', async () => {
+    if (!validate()) return;
+
+    analyzeBtn.disabled = true;
+
+    await showLoading();
+
+    const result = analyzeSpecs();
+
+    // Hide input, show results
+    $('inputSection').style.display = 'none';
+    $('resultsSection').classList.add('visible');
+
+    // Render
+    const bestKey = renderCategories(result);
+    renderVerdict(result, bestKey);
+    renderAIAdvice(result);
+
+    if (result.typeVal === 'laptop') {
+      renderLaptopCards(result);
+      $('laptopAlternatives').style.display = 'block';
+      $('desktopUpgrades').style.display = 'none';
+    } else {
+      renderDesktopUpgrades(result);
+      $('desktopUpgrades').style.display = 'block';
+      $('laptopAlternatives').style.display = 'none';
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    analyzeBtn.disabled = false;
+  });
+
+  // ═══ ANALYZE ANOTHER ═══════════════════════════════════════════════
+  $('analyzeAnotherBtn').addEventListener('click', () => {
+    $('resultsSection').classList.remove('visible');
+    $('inputSection').style.display = 'block';
+    $('desktopUpgrades').style.display = 'none';
+    $('laptopAlternatives').style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  </script>
+
+</body>
+</html>
