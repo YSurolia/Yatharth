@@ -6,53 +6,21 @@ on:
 jobs:
   build-mac:
     runs-on: macos-13
-
     permissions:
       contents: write
-
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install dependencies
-        working-directory: game-booster-app
-        run: |
-          npm install --legacy-peer-deps
-          npx electron-builder install-app-deps
-
-      - name: Build macOS DMG
-        working-directory: game-booster-app
-        run: npx electron-builder --mac --publish never
+          node-version: 20
+      - run: cd game-booster-app && npm ci || npm install
+      - run: cd game-booster-app && npx electron-builder --mac --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: List dist files
-        working-directory: game-booster-app
-        run: ls -la dist/ || echo "No dist folder"
-
-      - name: Upload macOS DMG as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Game-Booster-macOS
-          path: |
-            game-booster-app/dist/*.dmg
-            game-booster-app/dist/*.zip
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - run: ls -la game-booster-app/dist/
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
-          files: |
-            game-booster-app/dist/*.dmg
-            game-booster-app/dist/*.zip
+          files: game-booster-app/dist/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
