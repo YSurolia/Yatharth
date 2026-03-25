@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Booster — Optimize Your PC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f0f4ff;
+      --white: #ffffff;
+      --border: #dbe4f0;
+      --border-light: #e8eef8;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-light: #eff6ff;
+      --primary-dark: #2563eb;
+      --primary-darker: #1d4ed8;
+      --green: #22c55e;
+      --green-light: #f0fdf4;
+      --green-dark: #16a34a;
+      --orange: #f59e0b;
+      --orange-light: #fffbeb;
+      --red: #ef4444;
+      --red-light: #fef2f2;
+      --blue: #3b82f6;
+      --blue-light: #eff6ff;
+      --blue-mid: #60a5fa;
+      --teal: #0ea5e9;
+      --teal-light: #f0f9ff;
+      --shadow-sm: 0 1px 2px rgba(59,130,246,0.06);
+      --shadow: 0 1px 3px rgba(59,130,246,0.1), 0 1px 2px rgba(59,130,246,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(59,130,246,0.1), 0 2px 4px -2px rgba(59,130,246,0.08);
+      --shadow-lg: 0 10px 15px -3px rgba(59,130,246,0.1), 0 4px 6px -4px rgba(59,130,246,0.08);
+      --radius: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-app-region: no-drag;
+      user-select: none;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    /* ── FLOATING GAME OVERLAY (top-left) ── */
+    #gameOverlay {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid var(--primary);
+      border-radius: 50px;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.18);
+      animation: slideInLeft 0.4s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    #gameOverlay.visible { display: flex; }
+
+    @keyframes slideInLeft {
+      from { transform: translateX(-24px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .overlay-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+    .overlay-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 1.5s ease infinite;
+      flex-shrink: 0;
+    }
+    #overlayGameName {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .overlay-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── HERO ── */
+    .hero-icon {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .hero-icon .icon-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: var(--primary-light);
+      font-size: 32px;
+      position: relative;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.15);
+    }
+    .hero-icon .sparkle {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      font-size: 16px;
+    }
+
+    .hero-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .hero-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title .title-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* ── STATUS BADGE ── */
+    .status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .status-strip.scanning {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .status-strip.detected {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+    .status-strip.boosted {
+      background: var(--green-light);
+      color: var(--green-dark);
+    }
+    .status-strip.idle {
+      background: #f1f5f9;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse-dot 1.5s ease infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-box .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .stat-box .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .stat-box .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .stat-box.cpu .stat-value { color: var(--primary); }
+    .stat-box.ram .stat-value { color: var(--blue-mid); }
+    .stat-box.procs .stat-value { color: var(--teal); }
+
+    .stat-bar {
+      width: 100%;
+      height: 6px;
+      background: #e8eef8;
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+    .stat-bar-fill.cpu { background: var(--primary); }
+    .stat-bar-fill.ram { background: var(--blue-mid); }
+
+    /* ── GAME DETECTED CARD ── */
+    .game-detected {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      background: var(--white);
+      border: 2px solid var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(59,130,246,0.12);
+    }
+    .game-detected.visible { display: flex; }
+
+    .game-detected .game-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .game-detected .game-info { flex: 1; }
+    .game-detected .game-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .game-detected .game-process {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .game-detected .game-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── NO GAME ── */
+    .no-game-card {
+      display: none;
+      text-align: center;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .no-game-card.visible { display: block; }
+
+    .no-game-card .no-game-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 12px;
+      border-radius: 14px;
+      background: #e8eef8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      opacity: 0.5;
+    }
+    .no-game-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .no-game-card p {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── OPTIONS ── */
+    .option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .option-row:last-child { border-bottom: none; }
+
+    .option-info {
+      flex: 1;
+    }
+    .option-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .option-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Toggle */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #cbd5e1;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .toggle-track::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: var(--white);
+      border-radius: 50%;
+      transition: 0.3s;
+      box-shadow: var(--shadow-sm);
+    }
+    .toggle input:checked + .toggle-track { background: var(--primary); }
+    .toggle input:checked + .toggle-track::before { transform: translateX(20px); }
+
+    /* ── BOOST BUTTON ── */
+    .boost-btn {
+      width: 100%;
+      padding: 18px 24px;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 18px rgba(59,130,246,0.35);
+      margin-bottom: 16px;
+      letter-spacing: 0.2px;
+    }
+    .boost-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(59,130,246,0.45);
+    }
+    .boost-btn:active:not(:disabled) { transform: translateY(0); }
+    .boost-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── UNBOOST BUTTON ── */
+    .unboost-btn {
+      display: none;
+      width: 100%;
+      padding: 16px 24px;
+      border: 2px solid var(--orange);
+      border-radius: var(--radius);
+      background: var(--orange-light);
+      color: var(--orange);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .unboost-btn.visible { display: flex; }
+    .unboost-btn:hover {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    /* ── RESULTS ── */
+    .results-card {
+      display: none;
+    }
+    .results-card.visible { display: block; }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .result-row:last-child { border-bottom: none; }
+
+    .result-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .result-value {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .result-value.good { color: var(--green); }
+    .result-value.neutral { color: var(--primary); }
+
+    .killed-list {
+      margin-top: 12px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .killed-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 0;
+    }
+    .killed-item .ki-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+
+    /* ── PROCESS LIST ── */
+    .proc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .proc-header:hover { opacity: 0.7; }
+
+    .proc-toggle {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 600;
+      transition: transform 0.3s;
+    }
+
+    .proc-list {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+    .proc-list.open { max-height: 400px; overflow-y: auto; }
+
+    .proc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13px;
+    }
+    .proc-item:last-child { border-bottom: none; }
+    .proc-name { font-weight: 600; color: var(--text); }
+    .proc-mem { color: var(--text-muted); font-weight: 500; }
+
+    /* ── LOADING OVERLAY ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(240,244,255,0.92);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+    }
+    .loading-overlay.active { display: flex; }
+
+    .loading-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      max-width: 420px;
+      width: 90%;
+    }
+    .loading-card .loading-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      border-radius: 18px;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      animation: loadPulse 2s ease-in-out infinite;
+    }
+    @keyframes loadPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .loading-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .loading-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .bouncing-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .bouncing-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.4s ease-in-out infinite;
+    }
+    .bouncing-dots .dot:nth-child(2) { animation-delay: 0.16s; }
+    .bouncing-dots .dot:nth-child(3) { animation-delay: 0.32s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-10px); opacity: 1; }
+    }
+
+    /* ── FOOTER ── */
+    .footer-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .footer-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .footer-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .hero-title { font-size: 22px; }
+      #gameOverlay {
+        top: 8px;
+        left: 8px;
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+      #overlayGameName { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating Game Detection Badge -->
+<div id="gameOverlay">
+  <span class="overlay-icon">&#127918;</span>
+  <div class="overlay-dot"></div>
+  <span class="overlay-label">Playing</span>
+  <span id="overlayGameName">--</span>
+</div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero-icon">
+    <div class="icon-wrap">&#127918;<span class="sparkle">&#9889;</span></div>
+  </div>
+  <h1 class="hero-title">Game Booster</h1>
+  <p class="hero-subtitle">Auto-detects your games and optimizes your PC for maximum performance</p>
+
+  <!-- Status Strip -->
+  <div class="status-strip scanning" id="statusStrip">
+    <span class="status-dot"></span>
+    <span id="statusText">Scanning for games...</span>
+  </div>
+
+  <!-- System Stats -->
+  <div class="stats-grid">
+    <div class="stat-box cpu">
+      <div class="stat-label">CPU</div>
+      <div class="stat-value" id="cpuValue">--%</div>
+      <div class="stat-bar"><div class="stat-bar-fill cpu" id="cpuBar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-box ram">
+      <div class="stat-label">RAM</div>
+      <div class="stat-value" id="ramValue">--</div>
+      <div class="stat-sub" id="ramSub">-- free</div>
+      <div class="stat-bar"><div class="stat-bar-fill ram" id="ramBar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-box procs">
+      <div class="stat-label">Processes</div>
+      <div class="stat-value" id="procValue">--</div>
+      <div class="stat-sub" id="procSub">-- killable</div>
+    </div>
+  </div>
+
+  <!-- Game Detected -->
+  <div class="game-detected" id="gameCard">
+    <div class="game-icon-box">&#127918;</div>
+    <div class="game-info">
+      <div class="game-name" id="gameName">--</div>
+      <div class="game-process" id="gameProcess">--</div>
+    </div>
+    <div class="game-badge">Running</div>
+  </div>
+
+  <!-- No Game -->
+  <div class="no-game-card" id="noGame">
+    <div class="no-game-icon">&#127918;</div>
+    <h3>No game detected</h3>
+    <p>Launch a game and it will appear here automatically</p>
+  </div>
+
+  <!-- Boost Options -->
+  <div class="card" id="optionsCard">
+    <div class="card-title">
+      <div class="title-icon" style="background:var(--primary-light)">&#9881;</div>
+      Boost Options
+    </div>
+
+    <div class="option-row">
+      <div class="option-info">
+        <div class="option-label">Kill Background Apps</div>
+        <div class="option-desc">Close browsers, Discord, Spotify, Teams, etc.</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="optKill" checked />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="option-row">
+      <div class="option-info">
+        <div class="option-label">Set Game to High Priority</div>
+        <div class="option-desc">Gives your game more CPU time</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="optPriority" checked />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="option-row">
+      <div class="option-info">
+        <div class="option-label">Free Up RAM</div>
+        <div class="option-desc">Flush unused memory from other processes</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="optRam" checked />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="option-row">
+      <div class="option-info">
+        <div class="option-label">Disable Visual Effects</div>
+        <div class="option-desc">Turn off Windows animations & transparency</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="optEffects" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Boost Button -->
+  <button class="boost-btn" id="boostBtn" disabled onclick="doBoost()">
+    &#9889; Boost Your Game
+  </button>
+
+  <!-- Unboost Button -->
+  <button class="unboost-btn" id="unboostBtn" onclick="doUnboost()">
+    &#128260; Restore Normal Mode
+  </button>
+
+  <!-- Results -->
+  <div class="card results-card" id="resultsCard">
+    <div class="card-title">
+      <div class="title-icon" style="background:var(--primary-light)">&#9989;</div>
+      Boost Results
+    </div>
+    <div id="resultsBody"></div>
+  </div>
+
+  <!-- Background Processes -->
+  <div class="card" id="processCard">
+    <div class="proc-header" onclick="toggleProcessList()">
+      <div class="card-title" style="margin-bottom:0">
+        <div class="title-icon" style="background:var(--teal-light)">&#128202;</div>
+        Background Processes (<span id="killableCount">0</span>)
+      </div>
+      <span class="proc-toggle" id="procToggle">Show &#9660;</span>
+    </div>
+    <div class="proc-list" id="processList"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-badges">
+    <div class="footer-badge"><span class="dot"></span> Live scanning</div>
+    <div class="footer-badge"><span class="dot" style="background:var(--teal)"></span> Auto-detect</div>
+    <div class="footer-badge"><span class="dot" style="background:var(--blue-mid)"></span> Safe mode</div>
+  </div>
+
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-card">
+    <div class="loading-icon">&#9889;</div>
+    <h3 id="loadingTitle">Boosting your PC</h3>
+    <p id="loadingDesc">Closing background apps and optimizing for gaming...</p>
+    <div class="bouncing-dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentGame = null;
+  let isBoosted = false;
+
+  async function checkStatus() {
+    try {
+      const state = await window.boosterAPI.status();
+      if (state.active) {
+        isBoosted = true;
+        currentGame = { name: state.gameName, pid: state.gamePid };
+        setStatus('boosted', 'Boost is active');
+        document.getElementById('boostBtn').style.display = 'none';
+        document.getElementById('unboostBtn').classList.add('visible');
+        if (state.gameName) {
+          showGameCard(state.gameName, 'PID: ' + state.gamePid);
+        }
+      }
+    } catch {}
+  }
+
+  function setStatus(mode, text) {
+    const strip = document.getElementById('statusStrip');
+    strip.className = 'status-strip ' + mode;
+    document.getElementById('statusText').textContent = text;
+  }
+
+  function showGameCard(name, process) {
+    document.getElementById('gameName').textContent = name;
+    document.getElementById('gameProcess').textContent = process;
+    document.getElementById('gameCard').classList.add('visible');
+    document.getElementById('noGame').classList.remove('visible');
+    document.getElementById('noGame').style.display = 'none';
+    document.getElementById('overlayGameName').textContent = name;
+    document.getElementById('gameOverlay').classList.add('visible');
+  }
+
+  function hideGameCard() {
+    document.getElementById('gameCard').classList.remove('visible');
+    document.getElementById('noGame').classList.add('visible');
+    document.getElementById('noGame').style.display = 'block';
+    document.getElementById('gameOverlay').classList.remove('visible');
+  }
+
+  function updateStats(stats) {
+    document.getElementById('cpuValue').textContent = stats.cpuUsage + '%';
+    document.getElementById('cpuBar').style.width = stats.cpuUsage + '%';
+
+    var usedGB = (stats.ramUsedMB / 1024).toFixed(1);
+    var totalGB = (stats.ramTotalMB / 1024).toFixed(1);
+    var freeGB = (stats.ramFreeMB / 1024).toFixed(1);
+    var ramPct = Math.round((stats.ramUsedMB / stats.ramTotalMB) * 100);
+
+    document.getElementById('ramValue').textContent = usedGB + ' GB';
+    document.getElementById('ramSub').textContent = freeGB + ' GB free of ' + totalGB;
+    document.getElementById('ramBar').style.width = ramPct + '%';
+  }
+
+  function updateProcessList(procs) {
+    document.getElementById('killableCount').textContent = procs.length;
+    var list = document.getElementById('processList');
+    if (procs.length === 0) {
+      list.innerHTML = '<div style="padding:12px 0;color:var(--text-muted);font-size:13px;">No background apps to kill</div>';
+      return;
+    }
+    list.innerHTML = procs.map(function(p) {
+      var memMB = (p.memKB / 1024).toFixed(1);
+      return '<div class="proc-item"><span class="proc-name">' + p.name + '</span><span class="proc-mem">' + memMB + ' MB</span></div>';
+    }).join('');
+  }
+
+  function handleScanData(data) {
+    updateStats(data.stats);
+    document.getElementById('procValue').textContent = data.totalProcesses;
+    document.getElementById('procSub').textContent = data.killableCount + ' killable';
+    updateProcessList(data.killableProcesses);
+
+    if (isBoosted) return;
+
+    if (data.games.length > 0) {
+      var game = data.games[0];
+      currentGame = game;
+      showGameCard(game.name, game.processName + ' (PID: ' + game.pid + ')');
+      setStatus('detected', 'Game detected: ' + game.name);
+      document.getElementById('boostBtn').disabled = false;
+    } else {
+      currentGame = null;
+      hideGameCard();
+      setStatus('scanning', 'Scanning for games...');
+      document.getElementById('boostBtn').disabled = true;
+    }
+  }
+
+  async function initialScan() {
+    try {
+      var data = await window.boosterAPI.scan();
+      handleScanData(data);
+    } catch {
+      setStatus('idle', 'Scan error');
+    }
+  }
+
+  async function doBoost() {
+    if (!currentGame) return;
+
+    var overlay = document.getElementById('loadingOverlay');
+    document.getElementById('loadingTitle').textContent = 'Boosting your PC';
+    document.getElementById('loadingDesc').textContent = 'Closing background apps and optimizing for ' + currentGame.name + '...';
+    overlay.classList.add('active');
+
+    var options = {
+      killProcesses: document.getElementById('optKill').checked,
+      highPriority: document.getElementById('optPriority').checked,
+      freeRam: document.getElementById('optRam').checked,
+      disableEffects: document.getElementById('optEffects').checked,
+    };
+
+    try {
+      var result = await window.boosterAPI.boost({
+        gamePid: currentGame.pid,
+        gameName: currentGame.name,
+        options: options,
+      });
+
+      isBoosted = true;
+      setStatus('boosted', 'Boost is active');
+      document.getElementById('boostBtn').style.display = 'none';
+      document.getElementById('unboostBtn').classList.add('visible');
+
+      showResults(result);
+      setTimeout(function() { overlay.classList.remove('active'); }, 800);
+    } catch {
+      overlay.classList.remove('active');
+      alert('Boost failed. Please try again.');
+    }
+  }
+
+  function showResults(result) {
+    var card = document.getElementById('resultsCard');
+    var body = document.getElementById('resultsBody');
+
+    var preUsedGB = (result.preStats.ramUsedMB / 1024).toFixed(1);
+    var postUsedGB = (result.postStats.ramUsedMB / 1024).toFixed(1);
+    var freedMB = result.ramFreedMB;
+    var freedText = freedMB > 0 ? '+' + (freedMB / 1024).toFixed(2) + ' GB freed' : 'Minimal change';
+
+    var html = '';
+    html += '<div class="result-row"><span class="result-label">&#128683; Processes Killed</span><span class="result-value good">' + result.killedCount + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#128190; RAM Before</span><span class="result-value neutral">' + preUsedGB + ' GB used</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#128154; RAM After</span><span class="result-value good">' + postUsedGB + ' GB used</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#128640; RAM Freed</span><span class="result-value good">' + freedText + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#128187; CPU Before</span><span class="result-value neutral">' + result.preStats.cpuUsage + '%</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#9889; CPU After</span><span class="result-value good">' + result.postStats.cpuUsage + '%</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#128200; Priority</span><span class="result-value ' + (result.prioritySet ? 'good' : 'neutral') + '">' + (result.prioritySet ? 'High' : 'Unchanged') + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">&#127912; Visual Effects</span><span class="result-value ' + (result.effectsDisabled ? 'good' : 'neutral') + '">' + (result.effectsDisabled ? 'Disabled' : 'Unchanged') + '</span></div>';
+
+    if (result.killedProcesses && result.killedProcesses.length > 0) {
+      html += '<div class="killed-list">';
+      for (var i = 0; i < result.killedProcesses.length; i++) {
+        var p = result.killedProcesses[i];
+        html += '<div class="killed-item"><span class="ki-dot"></span>' + p.name + ' (' + (p.memKB / 1024).toFixed(1) + ' MB)</div>';
+      }
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
+    card.classList.add('visible');
+  }
+
+  async function doUnboost() {
+    var overlay = document.getElementById('loadingOverlay');
+    document.getElementById('loadingTitle').textContent = 'Restoring settings';
+    document.getElementById('loadingDesc').textContent = 'Returning your PC to normal mode...';
+    overlay.classList.add('active');
+
+    try {
+      await window.boosterAPI.unboost();
+
+      isBoosted = false;
+      currentGame = null;
+      setStatus('scanning', 'Scanning for games...');
+      document.getElementById('boostBtn').style.display = 'flex';
+      document.getElementById('boostBtn').disabled = true;
+      document.getElementById('unboostBtn').classList.remove('visible');
+      document.getElementById('resultsCard').classList.remove('visible');
+      hideGameCard();
+
+      setTimeout(function() { overlay.classList.remove('active'); }, 600);
+    } catch {
+      overlay.classList.remove('active');
+      alert('Restore failed. Please try again.');
+    }
+  }
+
+  function toggleProcessList() {
+    var list = document.getElementById('processList');
+    var toggle = document.getElementById('procToggle');
+    var open = list.classList.toggle('open');
+    toggle.innerHTML = open ? 'Hide &#9650;' : 'Show &#9660;';
+  }
+
+  // ── Initialize ──
+  checkStatus();
+  initialScan();
+
+  // Listen for push-based scan updates from main process
+  window.boosterAPI.onScanUpdate(handleScanData);
+</script>
+
+</body>
+</html>
