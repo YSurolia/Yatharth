@@ -9,16 +9,30 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: cd game-booster-app && npm ci || npm install
-      - run: cd game-booster-app && npx electron-builder --mac --publish never
+
+      - name: Install dependencies
+        working-directory: game-booster-app
+        run: npm install
+
+      - name: Build macOS DMG
+        working-directory: game-booster-app
+        run: npx electron-builder --mac dmg --publish never -c.mac.identity=null
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      - run: ls -la game-booster-app/dist/
-      - uses: softprops/action-gh-release@v2
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List built files
+        run: ls -la game-booster-app/dist/
+
+      - name: Upload DMG to Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
           files: game-booster-app/dist/*.dmg
