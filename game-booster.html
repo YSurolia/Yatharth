@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Booster — Download</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #08080f;
+      --bg-secondary: #0e0e1a;
+      --card: #13132a;
+      --card-border: #1e1e3a;
+      --card-hover: #1a1a38;
+      --text: #e8eaf0;
+      --text-secondary: #8b8fa8;
+      --text-muted: #555770;
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.3);
+      --primary-dark: #2563eb;
+      --accent: #60a5fa;
+      --gradient-start: #3b82f6;
+      --gradient-end: #8b5cf6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a5a; }
+
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .bg-glow {
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 40px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,8,15,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(30,30,58,0.5);
+      transition: all 0.3s;
+    }
+
+    nav.scrolled {
+      background: rgba(8,8,15,0.95);
+      box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 16px; letter-spacing: 1px;
+      color: var(--text); text-decoration: none;
+    }
+
+    .nav-logo svg { width: 28px; height: 28px; }
+
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+
+    .nav-links a {
+      color: var(--text-secondary); text-decoration: none;
+      font-size: 14px; font-weight: 500; transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-download {
+      background: var(--primary); color: #fff; border: none;
+      padding: 8px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: all 0.2s;
+    }
+
+    .nav-download:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative; z-index: 1; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      padding: 120px 20px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 100px; font-size: 13px; color: var(--accent);
+      margin-bottom: 32px; animation: fadeInDown 0.6s ease-out;
+    }
+
+    .hero-badge .dot {
+      width: 6px; height: 6px; background: #22c55e;
+      border-radius: 50%; animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(32px, 6vw, 72px);
+      line-height: 1.2; margin-bottom: 8px;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .hero-title .lightning {
+      display: inline-block; color: #f59e0b;
+      animation: zap 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+    }
+
+    @keyframes zap {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15) rotate(-5deg); }
+    }
+
+    .hero-subtitle {
+      font-size: clamp(15px, 2vw, 18px); color: var(--text-secondary);
+      max-width: 580px; margin: 20px auto 40px;
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 16px; animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: #fff; border: none; border-radius: 14px;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: all 0.3s;
+      position: relative; overflow: hidden;
+    }
+
+    .btn-download::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(59,130,246,0.4), 0 0 80px rgba(59,130,246,0.15);
+    }
+
+    .btn-download:hover::before { opacity: 1; }
+    .btn-download .win-icon { width: 22px; height: 22px; }
+    .hero-meta { font-size: 13px; color: var(--text-muted); }
+
+    .hero-screenshot {
+      margin-top: 60px; max-width: 900px; width: 100%;
+      animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+
+    .screenshot-frame {
+      position: relative; border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 80px rgba(59,130,246,0.08);
+    }
+
+    /* ─── MINI MOCK ─── */
+    .mini-mock {
+      background: #f0f4ff; border-radius: 10px; overflow: hidden;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    .mini-mock-header {
+      background: #fff; padding: 12px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid #e8eef8;
+    }
+
+    .mini-mock-header .icon { font-size: 18px; }
+    .mini-mock-header .title { font-size: 11px; font-weight: 700; color: #1e293b; }
+    .mini-mock-content { padding: 16px; }
+    .mini-stats-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+    .mini-stat-box {
+      flex: 1; background: #fff; border: 1px solid #e8eef8;
+      border-radius: 8px; padding: 10px; text-align: center;
+    }
+
+    .mini-stat-box .label {
+      font-size: 8px; color: #94a3b8; text-transform: uppercase;
+      letter-spacing: 0.5px; font-weight: 600;
+    }
+
+    .mini-stat-box .val { font-size: 16px; font-weight: 800; color: #3b82f6; margin-top: 2px; }
+    .mini-stat-box .sub { font-size: 8px; color: #94a3b8; }
+    .mini-bar { height: 3px; background: #e8eef8; border-radius: 2px; margin-top: 6px; }
+    .mini-bar-fill { height: 100%; background: #3b82f6; border-radius: 2px; }
+
+    .mini-game-box {
+      background: #fff; border: 1px solid #e8eef8;
+      border-radius: 8px; padding: 14px; text-align: center; margin-bottom: 12px;
+    }
+
+    .mini-game-box .gicon { font-size: 24px; }
+    .mini-game-box .gtitle { font-size: 11px; font-weight: 700; color: #1e293b; margin-top: 4px; }
+    .mini-game-box .gsub { font-size: 9px; color: #94a3b8; }
+
+    .mini-scan {
+      text-align: center; font-size: 10px; color: #3b82f6;
+      font-weight: 500; margin-bottom: 12px;
+    }
+
+    .mini-scan .dot {
+      display: inline-block; width: 5px; height: 5px;
+      background: #22c55e; border-radius: 50%; margin-right: 4px;
+      animation: pulse-dot 2s infinite;
+    }
+
+    .mini-boost-btn {
+      display: block;
+      background: linear-gradient(135deg, #818cf8, #6366f1);
+      color: #fff; text-align: center; padding: 10px;
+      border-radius: 8px; font-size: 12px; font-weight: 700;
+    }
+
+    .mini-option-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid #e8eef8;
+    }
+
+    .mini-option-row:last-child { border-bottom: none; }
+    .mini-option-label .name { font-size: 11px; font-weight: 600; color: #1e293b; }
+    .mini-option-label .desc { font-size: 9px; color: #94a3b8; }
+
+    .mini-toggle { width: 32px; height: 18px; border-radius: 10px; position: relative; }
+    .mini-toggle.on { background: #3b82f6; }
+    .mini-toggle.off { background: #cbd5e1; }
+
+    .mini-toggle::after {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      background: #fff; border-radius: 50%; top: 2px; transition: left 0.2s;
+    }
+
+    .mini-toggle.on::after { left: 16px; }
+    .mini-toggle.off::after { left: 2px; }
+
+    .mini-options-card {
+      background: #fff; border: 1px solid #e8eef8;
+      border-radius: 8px; padding: 4px 14px; margin-bottom: 12px;
+    }
+
+    .mini-section-title {
+      font-size: 10px; font-weight: 700; color: #1e293b;
+      margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ─── SECTIONS ─── */
+    .section { position: relative; z-index: 1; padding: 100px 20px; }
+
+    .section-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(20px, 3.5vw, 36px);
+      text-align: center; margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+      text-align: center; color: var(--text-secondary);
+      font-size: 16px; max-width: 500px; margin: 0 auto 60px;
+    }
+
+    .section-divider {
+      width: 40px; height: 3px;
+      background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+      border-radius: 2px; margin: 16px auto 20px;
+    }
+
+    /* ─── FEATURES ─── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px; max-width: 1000px; margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 28px; transition: all 0.3s ease;
+      opacity: 0; transform: translateY(30px);
+    }
+
+    .feature-card.visible { opacity: 1; transform: translateY(0); }
+
+    .feature-card:hover {
+      background: var(--card-hover); border-color: rgba(59,130,246,0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(59,130,246,0.1);
+    }
+
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 16px;
+      background: rgba(59,130,246,0.1);
+    }
+
+    .feature-card:nth-child(2) .feature-icon { background: rgba(239,68,68,0.1); }
+    .feature-card:nth-child(3) .feature-icon { background: rgba(245,158,11,0.1); }
+    .feature-card:nth-child(4) .feature-icon { background: rgba(34,197,94,0.1); }
+    .feature-card:nth-child(5) .feature-icon { background: rgba(139,92,246,0.1); }
+    .feature-card:nth-child(6) .feature-icon { background: rgba(14,165,233,0.1); }
+
+    .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+    /* ─── SCREENSHOTS ─── */
+    .screenshots-container {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 30px;
+    }
+
+    .screenshot-card {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--card-border); background: var(--card);
+      transition: all 0.4s ease; opacity: 0; transform: translateY(40px);
+    }
+
+    .screenshot-card.visible { opacity: 1; transform: translateY(0); }
+
+    .screenshot-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 40px rgba(59,130,246,0.15);
+      border-color: rgba(59,130,246,0.3);
+    }
+
+    .screenshot-label {
+      padding: 16px 20px; font-size: 14px; font-weight: 600;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--card-border); text-align: center;
+    }
+
+    .screenshot-inner { padding: 16px; }
+
+    /* ─── DOWNLOAD ─── */
+    .download-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .download-cards {
+      display: flex; justify-content: center; gap: 24px;
+      max-width: 800px; margin: 0 auto; flex-wrap: wrap;
+    }
+
+    .download-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 40px 50px; text-align: center;
+      transition: all 0.3s; opacity: 0; transform: translateY(30px);
+      min-width: 250px;
+    }
+
+    .download-card.visible { opacity: 1; transform: translateY(0); }
+    .download-card.active {
+      border-color: rgba(59,130,246,0.4);
+      box-shadow: 0 0 40px rgba(59,130,246,0.1);
+    }
+
+    .download-card:hover {
+      border-color: rgba(59,130,246,0.5); transform: translateY(-4px);
+    }
+
+    .download-card .os-icon { font-size: 40px; margin-bottom: 16px; }
+    .download-card .os-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .download-card .os-info { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+    .download-card .btn-os-download {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; background: var(--primary); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+
+    .download-card .btn-os-download:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .download-card.disabled { opacity: 0.4; pointer-events: none; }
+    .download-card.disabled .os-info::after { content: ' (Coming soon)'; color: var(--text-muted); }
+    .file-info { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+
+    /* ─── GAMES ─── */
+    .games-grid {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 12px; max-width: 900px; margin: 0 auto;
+    }
+
+    .game-tag {
+      background: var(--card); border: 1px solid var(--card-border);
+      padding: 8px 18px; border-radius: 100px;
+      font-size: 13px; font-weight: 500; color: var(--text-secondary);
+      transition: all 0.3s; opacity: 0; transform: scale(0.8);
+    }
+
+    .game-tag.visible { opacity: 1; transform: scale(1); }
+
+    .game-tag:hover {
+      border-color: rgba(59,130,246,0.3);
+      color: var(--text); background: var(--card-hover);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative; z-index: 1; padding: 40px 20px;
+      text-align: center; border-top: 1px solid var(--card-border);
+    }
+
+    .footer-logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);
+    }
+
+    .footer-text { font-size: 13px; color: var(--text-muted); }
+
+    .footer-links {
+      display: flex; justify-content: center; gap: 24px; margin-top: 16px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 13px; transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--primary); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .float-anim { animation: float 4s ease-in-out infinite; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 16px 60px; }
+      .screenshots-container { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .mini-stats-row { flex-direction: column; }
+      .btn-download { padding: 14px 28px; font-size: 16px; }
+      .download-cards { flex-direction: column; align-items: center; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title { font-size: 24px; }
+      .mini-stats-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#f59e0b" stroke="#f59e0b"/>
+    </svg>
+    GAME BOOSTER
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
+    <li><a href="#games">Games</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+  <a href="#download" class="nav-download">Download</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>
+    v1.0.0 &mdash; Free &amp; Open Source
+  </div>
+
+  <h1 class="hero-title">
+    GAME <span class="lightning">&#9889;</span> BOOSTER
+  </h1>
+
+  <p class="hero-subtitle">
+    Optimize your PC for maximum gaming performance. Auto-detect games, kill background apps, free up RAM, and boost your FPS instantly.
+  </p>
+
+  <div class="hero-actions">
+    <a href="https://github.com/YSurolia/Yatharth/releases/download/v1.0.0/Game.Booster.Setup.1.0.0.exe" download class="btn-download">
+      <svg class="win-icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+      </svg>
+      Download Now Windows &rarr;
+    </a>
+    <span class="hero-meta">v1.0.0 &middot; Windows 10/11 &middot; ~73 MB &middot; Free</span>
+  </div>
+
+  <div class="hero-screenshot float-anim">
+    <div class="screenshot-frame">
+      <div class="mini-mock">
+        <div class="mini-mock-header">
+          <span class="icon">&#127918;</span>
+          <span class="title">Game Booster &mdash; Optimize Your PC</span>
+        </div>
+        <div class="mini-mock-content">
+          <div style="text-align:center;margin-bottom:14px;">
+            <div style="font-size:36px;">&#127918;</div>
+            <div style="font-size:8px;color:#f59e0b;margin-top:-4px;">&#9889;</div>
+            <div style="font-size:16px;font-weight:800;color:#1e293b;">Game Booster</div>
+            <div style="font-size:10px;color:#94a3b8;">Auto-detects your games and optimizes your PC for maximum performance</div>
+          </div>
+          <div class="mini-scan"><span class="dot"></span> Scanning for games...</div>
+          <div class="mini-stats-row">
+            <div class="mini-stat-box">
+              <div class="label">CPU</div>
+              <div class="val">33%</div>
+              <div class="mini-bar"><div class="mini-bar-fill" style="width:33%"></div></div>
+            </div>
+            <div class="mini-stat-box">
+              <div class="label">RAM</div>
+              <div class="val">9.7 GB</div>
+              <div class="sub">6.1 GB free of 15.7</div>
+              <div class="mini-bar"><div class="mini-bar-fill" style="width:62%;background:#8b5cf6;"></div></div>
+            </div>
+            <div class="mini-stat-box">
+              <div class="label">PROCESSES</div>
+              <div class="val">276</div>
+              <div class="sub">21 killable</div>
+            </div>
+          </div>
+          <div class="mini-game-box">
+            <div class="gicon">&#127918;</div>
+            <div class="gtitle">No game detected</div>
+            <div class="gsub">Launch a game and it will appear here automatically</div>
+          </div>
+          <div class="mini-boost-btn">&#9889; Boost Your Game</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <h2 class="section-title">POWERFUL FEATURES</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Everything you need to get the most out of your gaming experience</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#127918;</div>
+      <h3 class="feature-title">Auto Game Detection</h3>
+      <p class="feature-desc">Automatically detects 20+ popular games including Minecraft, Fortnite, Valorant, CS2, GTA V, and more. No manual setup needed.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128165;</div>
+      <h3 class="feature-title">Kill Background Apps</h3>
+      <p class="feature-desc">Instantly close resource-hungry apps like Chrome, Discord, Spotify, Teams, and more to free up CPU and RAM for your game.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9889;</div>
+      <h3 class="feature-title">Set Game Priority</h3>
+      <p class="feature-desc">Elevates your game process to High priority, giving it more CPU time and reducing stutters and frame drops.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128190;</div>
+      <h3 class="feature-title">Free Up RAM</h3>
+      <p class="feature-desc">Flushes unused memory from background processes, giving your game more available RAM for smoother performance.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#127912;</div>
+      <h3 class="feature-title">Disable Visual Effects</h3>
+      <p class="feature-desc">Turn off Windows animations, transparency, and visual effects to squeeze out extra FPS on lower-end hardware.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128202;</div>
+      <h3 class="feature-title">Live System Monitoring</h3>
+      <p class="feature-desc">Real-time CPU usage, RAM consumption, and process count monitoring so you always know your system's status.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<section class="section" id="screenshots" style="background: var(--bg-secondary); border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border);">
+  <h2 class="section-title">SEE IT IN ACTION</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Clean, intuitive interface designed for gamers</p>
+
+  <div class="screenshots-container">
+    <div class="screenshot-card">
+      <div class="screenshot-inner">
+        <div class="mini-mock">
+          <div class="mini-mock-header">
+            <span class="icon">&#127918;</span>
+            <span class="title">Game Booster &mdash; Optimize Your PC</span>
+          </div>
+          <div class="mini-mock-content">
+            <div style="text-align:center;margin-bottom:10px;">
+              <div style="font-size:28px;">&#127918;</div>
+              <div style="font-size:14px;font-weight:800;color:#1e293b;">Game Booster</div>
+              <div style="font-size:9px;color:#94a3b8;">Auto-detects your games and optimizes your PC</div>
+            </div>
+            <div class="mini-scan"><span class="dot"></span> Scanning for games...</div>
+            <div class="mini-stats-row">
+              <div class="mini-stat-box">
+                <div class="label">CPU</div>
+                <div class="val">33%</div>
+                <div class="mini-bar"><div class="mini-bar-fill" style="width:33%"></div></div>
+              </div>
+              <div class="mini-stat-box">
+                <div class="label">RAM</div>
+                <div class="val">9.7 GB</div>
+                <div class="sub">6.1 GB free of 15.7</div>
+                <div class="mini-bar"><div class="mini-bar-fill" style="width:62%;background:#8b5cf6;"></div></div>
+              </div>
+              <div class="mini-stat-box">
+                <div class="label">PROCESSES</div>
+                <div class="val">276</div>
+                <div class="sub">21 killable</div>
+              </div>
+            </div>
+            <div class="mini-game-box">
+              <div class="gicon">&#127918;</div>
+              <div class="gtitle">No game detected</div>
+              <div class="gsub">Launch a game and it will appear here automatically</div>
+            </div>
+            <div class="mini-boost-btn">&#9889; Boost Your Game</div>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot-label">Dashboard &mdash; System monitoring &amp; game detection</div>
+    </div>
+
+    <div class="screenshot-card">
+      <div class="screenshot-inner">
+        <div class="mini-mock">
+          <div class="mini-mock-header">
+            <span class="icon">&#127918;</span>
+            <span class="title">Game Booster &mdash; Optimize Your PC</span>
+          </div>
+          <div class="mini-mock-content">
+            <div class="mini-section-title">&#9881; BOOST OPTIONS</div>
+            <div class="mini-options-card">
+              <div class="mini-option-row">
+                <div class="mini-option-label">
+                  <div class="name">Kill Background Apps</div>
+                  <div class="desc">Close browsers, Discord, Spotify, Teams, etc.</div>
+                </div>
+                <div class="mini-toggle on"></div>
+              </div>
+              <div class="mini-option-row">
+                <div class="mini-option-label">
+                  <div class="name">Set Game to High Priority</div>
+                  <div class="desc">Gives your game more CPU time</div>
+                </div>
+                <div class="mini-toggle on"></div>
+              </div>
+              <div class="mini-option-row">
+                <div class="mini-option-label">
+                  <div class="name">Free Up RAM</div>
+                  <div class="desc">Flush unused memory from other processes</div>
+                </div>
+                <div class="mini-toggle on"></div>
+              </div>
+              <div class="mini-option-row">
+                <div class="mini-option-label">
+                  <div class="name">Disable Visual Effects</div>
+                  <div class="desc">Turn off Windows animations &amp; transparency</div>
+                </div>
+                <div class="mini-toggle off"></div>
+              </div>
+            </div>
+            <div class="mini-boost-btn">&#9889; Boost Your Game</div>
+            <div style="margin-top:12px;background:#fff;border:1px solid #e8eef8;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:14px;">&#128202;</span>
+                <span style="font-size:11px;font-weight:700;color:#1e293b;">BACKGROUND PROCESSES ( 21 )</span>
+              </div>
+              <span style="font-size:10px;color:#3b82f6;font-weight:600;">Show &#9660;</span>
+            </div>
+            <div style="display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:9px;color:#94a3b8;">
+              <span><span style="color:#22c55e;">&#9679;</span> Live scanning</span>
+              <span><span style="color:#3b82f6;">&#9679;</span> Auto-detect</span>
+              <span><span style="color:#8b5cf6;">&#9679;</span> Safe mode</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot-label">Boost Options &mdash; Customize your optimization</div>
+    </div>
+  </div>
+</section>
+
+<!-- SUPPORTED GAMES -->
+<section class="section" id="games">
+  <h2 class="section-title">SUPPORTED GAMES</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Auto-detects and optimizes 20+ popular titles</p>
+
+  <div class="games-grid">
+    <span class="game-tag">Minecraft (Java)</span>
+    <span class="game-tag">Minecraft (Bedrock)</span>
+    <span class="game-tag">Fortnite</span>
+    <span class="game-tag">Valorant</span>
+    <span class="game-tag">Counter-Strike 2</span>
+    <span class="game-tag">Roblox</span>
+    <span class="game-tag">GTA V</span>
+    <span class="game-tag">Apex Legends</span>
+    <span class="game-tag">Overwatch 2</span>
+    <span class="game-tag">League of Legends</span>
+    <span class="game-tag">Rocket League</span>
+    <span class="game-tag">Elden Ring</span>
+    <span class="game-tag">Cyberpunk 2077</span>
+    <span class="game-tag">Destiny 2</span>
+    <span class="game-tag">PUBG</span>
+    <span class="game-tag">Rainbow Six Siege</span>
+    <span class="game-tag">Call of Duty: Warzone</span>
+    <span class="game-tag">Dota 2</span>
+    <span class="game-tag">FiveM (GTA RP)</span>
+    <span class="game-tag">No Man's Sky</span>
+    <span class="game-tag">Terraria</span>
+    <span class="game-tag">Baldur's Gate 3</span>
+    <span class="game-tag">Palworld</span>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="section download-section" id="download">
+  <h2 class="section-title">DOWNLOAD</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Get Game Booster for your platform</p>
+
+  <div class="download-cards">
+    <div class="download-card active">
+      <div class="os-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="#3b82f6">
+          <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+        </svg>
+      </div>
+      <div class="os-name">Windows</div>
+      <div class="os-info">Supports Windows 10 and above</div>
+      <a href="https://github.com/YSurolia/Yatharth/releases/download/v1.0.0/Game.Booster.Setup.1.0.0.exe" download class="btn-os-download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Download
+      </a>
+      <div class="file-info">v1.0.0 &middot; ~73 MB &middot; NSIS Installer</div>
+    </div>
+
+    <div class="download-card disabled">
+      <div class="os-icon" style="font-size:40px;">&#63743;</div>
+      <div class="os-name">macOS</div>
+      <div class="os-info">Intel &amp; Apple Silicon</div>
+      <button class="btn-os-download" disabled>Coming Soon</button>
+    </div>
+
+    <div class="download-card disabled">
+      <div class="os-icon" style="font-size:40px;">&#128039;</div>
+      <div class="os-name">Linux</div>
+      <div class="os-info">AppImage &amp; .deb</div>
+      <button class="btn-os-download" disabled>Coming Soon</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">GAME &#9889; BOOSTER</div>
+  <p class="footer-text">Made by GoatYatharth &middot; Warfront</p>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#screenshots">Screenshots</a>
+    <a href="#download">Download</a>
+  </div>
+</footer>
+
+<script>
+  // Nav scroll effect
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    navbar.classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const siblings = entry.target.parentElement.children;
+        const idx = Array.from(siblings).indexOf(entry.target);
+        entry.target.style.transitionDelay = idx * 0.1 + 's';
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.feature-card, .screenshot-card, .download-card, .game-tag').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>
