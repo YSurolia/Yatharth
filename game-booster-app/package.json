@@ -28,8 +28,9 @@
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/icon.png",
-      "category": "public.app-category.utilities"
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities",
+      "identity": null
     },
     "dmg": {
       "title": "Game Booster",
