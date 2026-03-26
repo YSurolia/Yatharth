@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-mac:
-    runs-on: macos-13
+    runs-on: macos-latest
     permissions:
       contents: write
     steps:
@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: game-booster-app
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build macOS DMG
         working-directory: game-booster-app
