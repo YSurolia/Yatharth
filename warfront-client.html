@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warfront Client — Download</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #08080f;
+      --bg-secondary: #0e0e1a;
+      --card: #13132a;
+      --card-border: #1e1e3a;
+      --card-hover: #1a1a38;
+      --text: #e8eaf0;
+      --text-secondary: #8b8fa8;
+      --text-muted: #555770;
+      --primary: #ef4444;
+      --primary-glow: rgba(239, 68, 68, 0.3);
+      --primary-dark: #dc2626;
+      --accent: #f87171;
+      --gradient-start: #ef4444;
+      --gradient-end: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a5a; }
+
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(239,68,68,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(239,68,68,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .bg-glow {
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse, rgba(239,68,68,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 40px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,8,15,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(30,30,58,0.5);
+      transition: all 0.3s;
+    }
+
+    nav.scrolled {
+      background: rgba(8,8,15,0.95);
+      box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 16px; letter-spacing: 1px;
+      color: var(--text); text-decoration: none;
+    }
+
+    .nav-logo svg { width: 28px; height: 28px; }
+
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+
+    .nav-links a {
+      color: var(--text-secondary); text-decoration: none;
+      font-size: 14px; font-weight: 500; transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-download {
+      background: var(--primary); color: #fff; border: none;
+      padding: 8px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: all 0.2s;
+    }
+
+    .nav-download:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    /* HERO */
+    .hero {
+      position: relative; z-index: 1; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      padding: 120px 20px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 100px; font-size: 13px; color: var(--accent);
+      margin-bottom: 32px; animation: fadeInDown 0.6s ease-out;
+    }
+
+    .hero-badge .dot {
+      width: 6px; height: 6px; background: #22c55e;
+      border-radius: 50%; animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero-certified {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 24px; margin-bottom: 28px;
+      background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(245,158,11,0.1));
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 12px; font-size: 15px; font-weight: 700;
+      color: #f87171; letter-spacing: 1px;
+      animation: fadeInDown 0.6s ease-out 0.1s both;
+      text-transform: uppercase;
+    }
+
+    .hero-certified .skull { font-size: 20px; }
+
+    .hero-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(28px, 5.5vw, 64px);
+      line-height: 1.2; margin-bottom: 8px;
+      animation: fadeInUp 0.6s ease-out 0.15s both;
+    }
+
+    .hero-title .sword {
+      display: inline-block; color: #ef4444;
+      animation: swing 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
+    }
+
+    @keyframes swing {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(15deg); }
+      75% { transform: rotate(-15deg); }
+    }
+
+    .hero-subtitle {
+      font-size: clamp(15px, 2vw, 18px); color: var(--text-secondary);
+      max-width: 620px; margin: 20px auto 40px;
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 16px; animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: #fff; border: none; border-radius: 14px;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: all 0.3s;
+      position: relative; overflow: hidden;
+    }
+
+    .btn-download::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(239,68,68,0.4), 0 0 80px rgba(239,68,68,0.15);
+    }
+
+    .btn-download:hover::before { opacity: 1; }
+    .btn-download .dl-icon { font-size: 22px; }
+    .hero-meta { font-size: 13px; color: var(--text-muted); }
+
+    /* HERO MOCK */
+    .hero-mock {
+      margin-top: 60px; max-width: 700px; width: 100%;
+      animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+
+    .mock-frame {
+      position: relative; border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 80px rgba(239,68,68,0.08);
+    }
+
+    .mock-inner {
+      background: #0c0c18; padding: 28px; text-align: center;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .mock-header {
+      background: #111125; padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid #1e1e3a;
+    }
+
+    .mock-header .icon { font-size: 18px; }
+    .mock-header .title { font-size: 11px; font-weight: 700; color: #8b8fa8; }
+
+    .mock-logo { font-size: 48px; margin-bottom: 8px; }
+    .mock-title { font-size: 22px; font-weight: 800; color: #ef4444; margin-bottom: 4px; }
+    .mock-sub { font-size: 12px; color: #555770; margin-bottom: 20px; }
+
+    .mock-stats {
+      display: flex; gap: 12px; margin-bottom: 20px;
+    }
+
+    .mock-stat {
+      flex: 1; background: #111125; border: 1px solid #1e1e3a;
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+
+    .mock-stat .label {
+      font-size: 9px; color: #555770; text-transform: uppercase;
+      letter-spacing: 0.5px; font-weight: 600;
+    }
+
+    .mock-stat .val { font-size: 22px; font-weight: 800; color: #ef4444; margin-top: 2px; }
+    .mock-stat .sub { font-size: 9px; color: #555770; }
+
+    .mock-modules {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 16px;
+    }
+
+    .mock-mod {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
+      padding: 4px 12px; border-radius: 100px;
+      font-size: 10px; font-weight: 600; color: #f87171;
+    }
+
+    .mock-btn {
+      display: inline-block; width: 100%;
+      background: linear-gradient(135deg, #ef4444, #f59e0b);
+      color: #fff; text-align: center; padding: 12px;
+      border-radius: 10px; font-size: 13px; font-weight: 700;
+    }
+
+    /* SECTIONS */
+    .section { position: relative; z-index: 1; padding: 100px 20px; }
+
+    .section-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(20px, 3.5vw, 36px);
+      text-align: center; margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+      text-align: center; color: var(--text-secondary);
+      font-size: 16px; max-width: 500px; margin: 0 auto 60px;
+    }
+
+    .section-divider {
+      width: 40px; height: 3px;
+      background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+      border-radius: 2px; margin: 16px auto 20px;
+    }
+
+    /* FEATURES */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px; max-width: 1000px; margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 28px; transition: all 0.3s ease;
+      opacity: 0; transform: translateY(30px);
+    }
+
+    .feature-card.visible { opacity: 1; transform: translateY(0); }
+
+    .feature-card:hover {
+      background: var(--card-hover); border-color: rgba(239,68,68,0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(239,68,68,0.1);
+    }
+
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 16px;
+      background: rgba(239,68,68,0.1);
+    }
+
+    .feature-card:nth-child(2) .feature-icon { background: rgba(59,130,246,0.1); }
+    .feature-card:nth-child(3) .feature-icon { background: rgba(245,158,11,0.1); }
+    .feature-card:nth-child(4) .feature-icon { background: rgba(139,92,246,0.1); }
+    .feature-card:nth-child(5) .feature-icon { background: rgba(34,197,94,0.1); }
+    .feature-card:nth-child(6) .feature-icon { background: rgba(14,165,233,0.1); }
+
+    .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+    /* MODULES */
+    .modules-grid {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 12px; max-width: 1000px; margin: 0 auto;
+    }
+
+    .module-tag {
+      background: var(--card); border: 1px solid var(--card-border);
+      padding: 8px 18px; border-radius: 100px;
+      font-size: 13px; font-weight: 500; color: var(--text-secondary);
+      transition: all 0.3s; opacity: 0; transform: scale(0.8);
+    }
+
+    .module-tag.visible { opacity: 1; transform: scale(1); }
+
+    .module-tag:hover {
+      border-color: rgba(239,68,68,0.3);
+      color: var(--text); background: var(--card-hover);
+    }
+
+    .module-tag.combat { border-color: rgba(239,68,68,0.2); }
+    .module-tag.combat:hover { border-color: rgba(239,68,68,0.5); color: #f87171; }
+    .module-tag.movement { border-color: rgba(59,130,246,0.2); }
+    .module-tag.movement:hover { border-color: rgba(59,130,246,0.5); color: #60a5fa; }
+    .module-tag.render { border-color: rgba(245,158,11,0.2); }
+    .module-tag.render:hover { border-color: rgba(245,158,11,0.5); color: #fbbf24; }
+
+    .module-category {
+      width: 100%; text-align: center; margin-top: 20px; margin-bottom: 4px;
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; color: var(--text-muted);
+    }
+
+    .module-category:first-child { margin-top: 0; }
+
+    /* DOWNLOAD */
+    .download-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .download-cards {
+      display: flex; justify-content: center; gap: 24px;
+      max-width: 800px; margin: 0 auto; flex-wrap: wrap;
+    }
+
+    .download-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 40px 50px; text-align: center;
+      transition: all 0.3s; opacity: 0; transform: translateY(30px);
+      min-width: 280px; max-width: 400px;
+    }
+
+    .download-card.visible { opacity: 1; transform: translateY(0); }
+    .download-card.active {
+      border-color: rgba(239,68,68,0.4);
+      box-shadow: 0 0 40px rgba(239,68,68,0.1);
+    }
+
+    .download-card:hover {
+      border-color: rgba(239,68,68,0.5); transform: translateY(-4px);
+    }
+
+    .download-card .os-icon { font-size: 48px; margin-bottom: 16px; }
+    .download-card .os-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .download-card .os-info { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6; }
+
+    .download-card .btn-os-download {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; background: var(--primary); color: #fff;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+
+    .download-card .btn-os-download:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .file-info { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+
+    .requirements {
+      max-width: 600px; margin: 40px auto 0; text-align: center;
+      font-size: 13px; color: var(--text-muted); line-height: 1.8;
+    }
+
+    .requirements strong { color: var(--text-secondary); }
+
+    /* OWNER */
+    .owner-section {
+      text-align: center; padding: 80px 20px;
+      position: relative; z-index: 1;
+    }
+
+    .owner-badge {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 16px 32px;
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; margin-bottom: 20px;
+    }
+
+    .owner-badge .avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, #ef4444, #f59e0b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; color: #fff;
+    }
+
+    .owner-badge .info { text-align: left; }
+    .owner-badge .name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .owner-badge .role { font-size: 12px; color: var(--text-muted); }
+
+    .owner-text {
+      font-size: 15px; color: var(--text-secondary); max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* FOOTER */
+    footer {
+      position: relative; z-index: 1; padding: 40px 20px;
+      text-align: center; border-top: 1px solid var(--card-border);
+    }
+
+    .footer-logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);
+    }
+
+    .footer-text { font-size: 13px; color: var(--text-muted); }
+
+    .footer-links {
+      display: flex; justify-content: center; gap: 24px; margin-top: 16px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 13px; transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--primary); }
+
+    /* ANIMATIONS */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .float-anim { animation: float 4s ease-in-out infinite; }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 16px 60px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .mock-stats { flex-direction: column; }
+      .btn-download { padding: 14px 28px; font-size: 16px; }
+      .download-cards { flex-direction: column; align-items: center; }
+      .owner-badge { flex-direction: column; text-align: center; }
+      .owner-badge .info { text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title { font-size: 22px; }
+      .mock-stats { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/>
+      <path d="M13 19l6-6"/>
+      <path d="M16 16l3.5 3.5"/>
+      <path d="M19.5 19.5l1 1"/>
+    </svg>
+    WARFRONT CLIENT
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#modules">Modules</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+  <a href="#download" class="nav-download">Download</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>
+    v1.0.0 &mdash; Minecraft 1.21.1 &middot; Fabric
+  </div>
+
+  <div class="hero-certified">
+    <span class="skull">&#128128;</span>
+    You Are a Certified Hacker
+    <span class="skull">&#128128;</span>
+  </div>
+
+  <h1 class="hero-title">
+    WARFRONT <span class="sword">&#9876;</span> CLIENT
+  </h1>
+
+  <p class="hero-subtitle">
+    The ultimate Minecraft hacked client by Warfront. 80+ modules including KillAura, Fly, ESP, Xray, CrystalAura, and more. Dominate every server.
+  </p>
+
+  <div class="hero-actions">
+    <a href="WarfrontClient/build/libs/warfront-client-1.0.0.jar" download class="btn-download">
+      <span class="dl-icon">&#9876;</span>
+      <span>Download Warfront Client &rarr;</span>
+    </a>
+    <span class="hero-meta">v1.0.0 &middot; Fabric Mod &middot; Minecraft 1.21.1 &middot; Free</span>
+  </div>
+
+  <div class="hero-mock float-anim">
+    <div class="mock-frame">
+      <div class="mock-header">
+        <span class="icon">&#9876;</span>
+        <span class="title">Warfront Client &mdash; Hacked Client</span>
+      </div>
+      <div class="mock-inner">
+        <div class="mock-logo">&#128128;</div>
+        <div class="mock-title">Warfront Client</div>
+        <div class="mock-sub">Dominate. Destroy. Hack everything.</div>
+        <div class="mock-stats">
+          <div class="mock-stat">
+            <div class="label">Combat</div>
+            <div class="val">29</div>
+            <div class="sub">modules</div>
+          </div>
+          <div class="mock-stat">
+            <div class="label">Movement</div>
+            <div class="val">30</div>
+            <div class="sub">modules</div>
+          </div>
+          <div class="mock-stat">
+            <div class="label">Render</div>
+            <div class="val">25</div>
+            <div class="sub">modules</div>
+          </div>
+        </div>
+        <div class="mock-modules">
+          <span class="mock-mod">KillAura</span>
+          <span class="mock-mod">Fly</span>
+          <span class="mock-mod">ESP</span>
+          <span class="mock-mod">Xray</span>
+          <span class="mock-mod">Speed</span>
+          <span class="mock-mod">CrystalAura</span>
+          <span class="mock-mod">NoFall</span>
+        </div>
+        <div class="mock-btn">&#9876; Activate Hacks</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <h2 class="section-title">FEATURES</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Everything you need to dominate any Minecraft server</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#9876;</div>
+      <h3 class="feature-title">29 Combat Modules</h3>
+      <p class="feature-desc">KillAura, CrystalAura, BedAura, AimAssist, Reach, TriggerBot, AutoClicker, and 22 more combat hacks to destroy your opponents.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128007;</div>
+      <h3 class="feature-title">30 Movement Modules</h3>
+      <p class="feature-desc">Fly, Speed, Sprint, NoFall, Jesus, Spider, BunnyHop, Jetpack, HighJump, and 21 more movement hacks for total freedom.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128065;</div>
+      <h3 class="feature-title">25 Render Modules</h3>
+      <p class="feature-desc">ESP, Xray, Fullbright, Tracers, Freecam, NightVision, NameTags, StorageESP, and 17 more visual hacks to see everything.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#127918;</div>
+      <h3 class="feature-title">Click GUI</h3>
+      <p class="feature-desc">Clean, intuitive in-game Click GUI to toggle and configure all your modules. Easily customize settings on the fly while playing.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9881;</div>
+      <h3 class="feature-title">Config System</h3>
+      <p class="feature-desc">Save and load your module configurations. Share configs with friends or switch between different setups for different servers.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128268;</div>
+      <h3 class="feature-title">Mixin-Based</h3>
+      <p class="feature-desc">Built on Fabric with Mixin injection for maximum compatibility and performance. 10+ mixins for deep game integration.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES -->
+<section class="section" id="modules" style="background: var(--bg-secondary); border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border);">
+  <h2 class="section-title">80+ MODULES</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">A massive arsenal of hacks at your fingertips</p>
+
+  <div class="modules-grid">
+    <div class="module-category">&#9876; Combat</div>
+    <span class="module-tag combat">KillAura</span>
+    <span class="module-tag combat">CrystalAura</span>
+    <span class="module-tag combat">BedAura</span>
+    <span class="module-tag combat">AimAssist</span>
+    <span class="module-tag combat">Reach</span>
+    <span class="module-tag combat">TriggerBot</span>
+    <span class="module-tag combat">AutoClicker</span>
+    <span class="module-tag combat">AnchorAura</span>
+    <span class="module-tag combat">BowAimbot</span>
+    <span class="module-tag combat">Criticals</span>
+    <span class="module-tag combat">FightBot</span>
+    <span class="module-tag combat">InfiniAura</span>
+    <span class="module-tag combat">MultiAura</span>
+    <span class="module-tag combat">TPAura</span>
+    <span class="module-tag combat">AutoArmor</span>
+    <span class="module-tag combat">AutoBow</span>
+    <span class="module-tag combat">AutoGap</span>
+    <span class="module-tag combat">AutoPotion</span>
+    <span class="module-tag combat">AutoSword</span>
+    <span class="module-tag combat">FastBow</span>
+    <span class="module-tag combat">HoleFiller</span>
+    <span class="module-tag combat">KnockbackPlus</span>
+    <span class="module-tag combat">MaceDmg</span>
+    <span class="module-tag combat">Surround</span>
+
+    <div class="module-category">&#128007; Movement</div>
+    <span class="module-tag movement">Fly</span>
+    <span class="module-tag movement">Speed</span>
+    <span class="module-tag movement">Sprint</span>
+    <span class="module-tag movement">NoFall</span>
+    <span class="module-tag movement">Jesus</span>
+    <span class="module-tag movement">Spider</span>
+    <span class="module-tag movement">BunnyHop</span>
+    <span class="module-tag movement">Jetpack</span>
+    <span class="module-tag movement">HighJump</span>
+    <span class="module-tag movement">LongJump</span>
+    <span class="module-tag movement">Step</span>
+    <span class="module-tag movement">Glide</span>
+    <span class="module-tag movement">BoatFly</span>
+    <span class="module-tag movement">ClickTP</span>
+    <span class="module-tag movement">EntitySpeed</span>
+    <span class="module-tag movement">ExtraElytra</span>
+    <span class="module-tag movement">FastClimb</span>
+    <span class="module-tag movement">IceSpeed</span>
+    <span class="module-tag movement">AirJump</span>
+    <span class="module-tag movement">AntiVoid</span>
+    <span class="module-tag movement">SafeWalk</span>
+    <span class="module-tag movement">Sneak</span>
+    <span class="module-tag movement">Parkour</span>
+    <span class="module-tag movement">Trident</span>
+    <span class="module-tag movement">AutoWalk</span>
+
+    <div class="module-category">&#128065; Render</div>
+    <span class="module-tag render">ESP</span>
+    <span class="module-tag render">Xray</span>
+    <span class="module-tag render">Fullbright</span>
+    <span class="module-tag render">Tracers</span>
+    <span class="module-tag render">Freecam</span>
+    <span class="module-tag render">NightVision</span>
+    <span class="module-tag render">NameTags</span>
+    <span class="module-tag render">PlayerESP</span>
+    <span class="module-tag render">StorageESP</span>
+    <span class="module-tag render">ItemESP</span>
+    <span class="module-tag render">MobESP</span>
+    <span class="module-tag render">ChunkBorders</span>
+    <span class="module-tag render">Trajectories</span>
+    <span class="module-tag render">TrueSight</span>
+    <span class="module-tag render">Zoom</span>
+    <span class="module-tag render">NoHurtCam</span>
+    <span class="module-tag render">NoWeather</span>
+    <span class="module-tag render">Search</span>
+  </div>
+</section>
+
+<!-- OWNER -->
+<section class="owner-section">
+  <div class="owner-badge">
+    <div class="avatar">G</div>
+    <div class="info">
+      <div class="name">GoatYatharth</div>
+      <div class="role">Owner &amp; Developer at Warfront</div>
+    </div>
+  </div>
+  <p class="owner-text">
+    Built from scratch by GoatYatharth. Warfront Client is the product of countless hours of development, testing, and optimization. Every module crafted for maximum performance.
+  </p>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="section download-section" id="download">
+  <h2 class="section-title">DOWNLOAD</h2>
+  <div class="section-divider"></div>
+  <p class="section-subtitle">Get Warfront Client and start hacking</p>
+
+  <div class="download-cards">
+    <div class="download-card active">
+      <div class="os-icon">&#9876;</div>
+      <div class="os-name">Warfront Client</div>
+      <div class="os-info">Fabric Mod for Minecraft 1.21.1<br>Works on Windows, macOS &amp; Linux</div>
+      <a href="WarfrontClient/build/libs/warfront-client-1.0.0.jar" download class="btn-os-download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Download .JAR
+      </a>
+      <div class="file-info">v1.0.0 &middot; Fabric Mod &middot; .jar file</div>
+    </div>
+  </div>
+
+  <div class="requirements">
+    <strong>Requirements:</strong> Minecraft 1.21.1 &middot; Fabric Loader &middot; Java 21+<br>
+    <strong>Installation:</strong> Drop the .jar file into your Minecraft <code>mods</code> folder
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">WARFRONT &#9876; CLIENT</div>
+  <p class="footer-text">Made by GoatYatharth &middot; Owner &amp; Developer at Warfront</p>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#modules">Modules</a>
+    <a href="#download">Download</a>
+  </div>
+</footer>
+
+<script>
+  // Nav scroll effect
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    navbar.classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const siblings = entry.target.parentElement.children;
+        const idx = Array.from(siblings).indexOf(entry.target);
+        entry.target.style.transitionDelay = idx * 0.08 + 's';
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.feature-card, .download-card, .module-tag').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>
