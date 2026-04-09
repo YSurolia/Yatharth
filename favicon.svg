@@ -1,0 +1,15 @@
+<svg viewBox="250 40 180 200" xmlns="http://www.w3.org/2000/svg">
+  <g opacity="0.7">
+    <line x1="240" y1="50" x2="440" y2="230" stroke="#c8a84b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M236 46 L244 40 L248 48 Z" fill="#c8a84b"/>
+    <rect x="255" y="62" width="30" height="4" rx="1" transform="rotate(42, 270, 64)" fill="#c8a84b"/>
+    <line x1="440" y1="50" x2="240" y2="230" stroke="#c8a84b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M444 46 L436 40 L432 48 Z" fill="#c8a84b"/>
+    <rect x="395" y="62" width="30" height="4" rx="1" transform="rotate(-42, 410, 64)" fill="#c8a84b"/>
+  </g>
+  <path d="M340 58 L405 90 L405 182 L340 226 L275 182 L275 90 Z" fill="#c8a84b"/>
+  <path d="M340 74 L390 100 L390 170 L340 206 L290 170 L290 100 Z" fill="#0a0a10"/>
+  <path d="M340 120 L375 140 L340 160 L305 140 Z" fill="none" stroke="#c8a84b" stroke-width="2.5"/>
+  <path d="M340 130 L365 145 L340 160 L315 145 Z" fill="#c8a84b" opacity="0.3"/>
+  <text x="340" y="155" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="38" font-weight="700" fill="#E8E8E8" letter-spacing="2">W</text>
+</svg>
