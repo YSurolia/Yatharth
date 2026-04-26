@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How To Use The Widget</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 28px;
+        font-family: Consolas, "Segoe UI", sans-serif;
+        background: #0f1724;
+        color: #edf4ff;
+      }
+
+      .card {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+        border-radius: 22px;
+        background: #142033;
+        border: 1px solid #263851;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      pre {
+        margin: 14px 0 0;
+        padding: 18px;
+        border-radius: 18px;
+        background: #09111d;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Use this on your website</h1>
+      <pre>&lt;script src="./photo-pdf-converter-single.js"&gt;&lt;/script&gt;
+&lt;photo-pdf-converter
+  heading="Photo to PDF"
+  subheading="Upload photos, reorder them, and export one clean PDF."
+  filename="my-photos"
+&gt;&lt;/photo-pdf-converter&gt;
+
+Optional JavaScript mount:
+
+&lt;div id="pdf-tool"&gt;&lt;/div&gt;
+&lt;script src="./photo-pdf-converter-single.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  PhotoPdfConverterWidget.mount("#pdf-tool", {
+    heading: "Photo to PDF",
+    subheading: "Drop photos here and download a PDF.",
+    filename: "my-photos",
+    accent: "#1d75ea"
+  });
+&lt;/script&gt;</pre>
+    </div>
+  </body>
+</html>
