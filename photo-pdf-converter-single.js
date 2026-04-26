@@ -98,7 +98,7 @@ class PhotoPdfConverter extends HTMLElement {
       activeId: null,
       busy: false,
       statusTone: "info",
-      statusMessage: "Drop images here or choose them from your device to begin.",
+      statusMessage: "Add photos to start.",
     };
     this.dragDepth = 0;
     this.draggedId = null;
@@ -160,6 +160,10 @@ class PhotoPdfConverter extends HTMLElement {
           box-sizing: border-box;
         }
 
+        [hidden] {
+          display: none !important;
+        }
+
         button,
         input,
         select {
@@ -217,9 +221,9 @@ class PhotoPdfConverter extends HTMLElement {
         .hero {
           position: relative;
           display: grid;
-          grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.82fr);
+          grid-template-columns: 1fr;
           gap: 20px;
-          margin-bottom: 22px;
+          margin-bottom: 14px;
           animation: rise 420ms ease both;
         }
 
@@ -241,7 +245,7 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .hero-copy {
-          padding: 28px;
+          padding: 24px;
         }
 
         .eyebrow,
@@ -270,15 +274,17 @@ class PhotoPdfConverter extends HTMLElement {
         .hero-copy p {
           margin: 0;
           color: var(--muted);
-          line-height: 1.7;
-          font-size: 1rem;
+          line-height: 1.55;
+          font-size: 0.96rem;
         }
 
-        .hero-metrics {
-          display: grid;
-          gap: 14px;
-          padding: 20px;
-          align-content: start;
+        .ambient,
+        .hero-metrics,
+        .eyebrow,
+        .panel-label,
+        .note,
+        .footnote {
+          display: none;
         }
 
         .metric {
@@ -311,13 +317,13 @@ class PhotoPdfConverter extends HTMLElement {
           position: relative;
           z-index: 1;
           display: grid;
-          grid-template-columns: 1.05fr 1.2fr 0.9fr;
-          gap: 20px;
+          grid-template-columns: 1.02fr 1.16fr 0.92fr;
+          gap: 16px;
           align-items: start;
         }
 
         .panel {
-          padding: 20px;
+          padding: 18px;
           animation: rise 520ms ease both;
         }
 
@@ -326,20 +332,20 @@ class PhotoPdfConverter extends HTMLElement {
           justify-content: space-between;
           gap: 14px;
           align-items: flex-start;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
 
         .panel-header h3 {
-          margin: 10px 0 0;
-          font-size: 1.28rem;
+          margin: 0;
+          font-size: 1.06rem;
           line-height: 1.15;
         }
 
         .panel-header p {
-          margin: 8px 0 0;
+          margin: 4px 0 0;
           color: var(--muted);
-          line-height: 1.55;
-          font-size: 0.94rem;
+          line-height: 1.45;
+          font-size: 0.9rem;
         }
 
         .note {
@@ -354,9 +360,9 @@ class PhotoPdfConverter extends HTMLElement {
           display: grid;
           justify-items: center;
           text-align: center;
-          gap: 12px;
-          padding: 28px 18px;
-          border-radius: 26px;
+          gap: 10px;
+          padding: 24px 16px;
+          border-radius: 22px;
           border: 1.5px dashed var(--line-strong);
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 247, 255, 0.95));
@@ -414,7 +420,7 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .dropzone strong {
-          font-size: 1.18rem;
+          font-size: 1.04rem;
         }
 
         .dropzone p,
@@ -423,6 +429,7 @@ class PhotoPdfConverter extends HTMLElement {
           margin: 0;
           color: var(--muted);
           line-height: 1.55;
+          font-size: 0.92rem;
         }
 
         .button-row,
@@ -488,11 +495,11 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .status {
-          margin-top: 14px;
-          padding: 14px 16px;
-          border-radius: 18px;
+          margin-top: 12px;
+          padding: 12px 14px;
+          border-radius: 16px;
           border: 1px solid transparent;
-          font-size: 0.92rem;
+          font-size: 0.9rem;
           line-height: 1.5;
         }
 
@@ -612,6 +619,9 @@ class PhotoPdfConverter extends HTMLElement {
         .thumb-grid {
           display: grid;
           gap: 12px;
+          max-height: 440px;
+          overflow: auto;
+          padding-right: 2px;
         }
 
         .thumb-card {
@@ -702,7 +712,7 @@ class PhotoPdfConverter extends HTMLElement {
 
         .field-stack {
           display: grid;
-          gap: 14px;
+          gap: 12px;
         }
 
         .field-grid {
@@ -759,7 +769,7 @@ class PhotoPdfConverter extends HTMLElement {
 
         .summary-card h4 {
           margin: 0 0 12px;
-          font-size: 1rem;
+          font-size: 0.96rem;
         }
 
         .summary-row {
@@ -902,8 +912,8 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="panel-header">
               <div>
                 <span class="panel-label">Upload</span>
-                <h3>Add your photos</h3>
-                <p>Drag and drop images here, or choose multiple photos from your device.</p>
+                <h3>Upload</h3>
+                <p>Drag and drop or click to browse.</p>
               </div>
             </div>
 
@@ -914,13 +924,13 @@ class PhotoPdfConverter extends HTMLElement {
                 <span></span>
                 <span>+</span>
               </div>
-              <strong>Drop photos here</strong>
-              <p>JPG, PNG, WEBP, and most browser-supported image types are welcome.</p>
+              <strong>Add photos</strong>
+              <p>Drag and drop or click to browse.</p>
               <div class="button-row">
-                <button id="pickButton" class="primary-button" type="button">Choose photos</button>
-                <button id="clearButton" class="ghost-button" type="button">Clear all</button>
+                <button id="pickButton" class="primary-button" type="button">Add photos</button>
+                <button id="clearButton" class="ghost-button" type="button">Clear</button>
               </div>
-              <p class="micro-copy" id="uploadSummary">Supports one or many images at once.</p>
+              <p class="micro-copy" id="uploadSummary">No images added.</p>
             </div>
 
             <div id="status" class="status info" role="status" aria-live="polite"></div>
@@ -930,8 +940,8 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="panel-header">
               <div>
                 <span class="panel-label">Queue</span>
-                <h3>Preview and order</h3>
-                <p>Pick the active image below, then drag cards or use quick controls to reorder.</p>
+                <h3>Pages</h3>
+                <p>Select, drag, and reorder.</p>
               </div>
               <div class="note">The first card becomes page one in your PDF.</div>
             </div>
@@ -939,8 +949,8 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="preview-stage">
               <div id="emptyPreview" class="empty-preview">
                 <div class="empty-spot" aria-hidden="true"></div>
-                <strong>Your selected photo will appear here.</strong>
-                <p>Add images to start building the PDF.</p>
+                <strong>Preview</strong>
+                <p>Add or select a photo.</p>
               </div>
 
               <img id="previewImage" class="preview-image" alt="Selected image preview" hidden />
@@ -961,14 +971,14 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="panel-header">
               <div>
                 <span class="panel-label">Export</span>
-                <h3>Shape the final PDF</h3>
-                <p>Adjust the filename, page size, spacing, and image quality before download.</p>
+                <h3>Export</h3>
+                <p>Adjust the settings and download.</p>
               </div>
             </div>
 
             <div class="field-stack">
               <label class="field">
-                <span>Output file name</span>
+                <span>File name</span>
                 <input id="filenameInput" type="text" value="photo-stack" placeholder="photo-stack" />
               </label>
 
@@ -1003,9 +1013,9 @@ class PhotoPdfConverter extends HTMLElement {
               </label>
 
               <div class="summary-card">
-                <h4>Export summary</h4>
+                <h4>Summary</h4>
                 <div class="summary-row">
-                  <span>Total pages</span>
+                  <span>Pages</span>
                   <strong id="summaryPages">0</strong>
                 </div>
                 <div class="summary-row">
@@ -1013,16 +1023,16 @@ class PhotoPdfConverter extends HTMLElement {
                   <strong id="summaryLayout">A4 • Auto</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Spacing</span>
-                  <strong id="summaryMargin">24 pt margins</strong>
+                  <span>Margin</span>
+                  <strong id="summaryMargin">24 pt</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Estimated quality</span>
+                  <span>Quality</span>
                   <strong id="summaryQuality">90%</strong>
                 </div>
               </div>
 
-              <button id="generateButton" class="primary-button wide" type="button">Create PDF</button>
+              <button id="generateButton" class="primary-button wide" type="button">Download PDF</button>
             </div>
 
             <p class="footnote">This single-file widget loads the PDF engine automatically when needed.</p>
@@ -1177,10 +1187,8 @@ class PhotoPdfConverter extends HTMLElement {
   }
 
   applyAttributes() {
-    const heading = this.getAttribute("heading") || "Build a photo PDF with a smooth website UI.";
-    const subheading =
-      this.getAttribute("subheading") ||
-      "Upload one or many photos, reorder them, and export a polished PDF directly in the browser.";
+    const heading = this.getAttribute("heading") || "Photo to PDF";
+    const subheading = this.getAttribute("subheading") || "Upload, reorder, and download.";
     const filename = this.getAttribute("filename") || "photo-stack";
     const accent = this.getAttribute("accent");
 
@@ -1234,7 +1242,7 @@ class PhotoPdfConverter extends HTMLElement {
     const skipped = files.length - imageFiles.length;
 
     if (!imageFiles.length) {
-      this.setStatus("Please choose image files only.", "error");
+      this.setStatus("Choose image files only.", "error");
       return;
     }
 
@@ -1266,10 +1274,10 @@ class PhotoPdfConverter extends HTMLElement {
     const parts = [];
     parts.push(`${loadedItems.length} photo${loadedItems.length === 1 ? "" : "s"} added.`);
     if (skipped > 0) {
-      parts.push(`Skipped ${skipped} non-image file${skipped === 1 ? "" : "s"}.`);
+      parts.push(`${skipped} skipped.`);
     }
     if (failedCount > 0) {
-      parts.push(`Could not open ${failedCount} image${failedCount === 1 ? "" : "s"}.`);
+      parts.push(`${failedCount} failed.`);
     }
 
     this.setStatus(parts.join(" "), failedCount > 0 ? "info" : "success");
@@ -1303,7 +1311,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.state.items = [];
     this.state.activeId = null;
     this.render();
-    this.setStatus("The image queue is clear. Add more photos whenever you are ready.", "info");
+    this.setStatus("All photos removed.", "info");
   }
 
   removeItem(itemId) {
@@ -1319,7 +1327,7 @@ class PhotoPdfConverter extends HTMLElement {
       this.state.activeId = this.state.items[Math.max(0, index - 1)]?.id || this.state.items[0]?.id || null;
     }
 
-    this.setStatus("Image removed from the PDF queue.", "info");
+    this.setStatus("Photo removed.", "info");
   }
 
   moveByOffset(itemId, offset) {
@@ -1387,8 +1395,8 @@ class PhotoPdfConverter extends HTMLElement {
 
     this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
-    this.refs.pickButton.textContent = this.state.items.length ? "Add more photos" : "Choose photos";
-    this.refs.generateButton.textContent = this.state.busy ? "Working..." : "Create PDF";
+    this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
+    this.refs.generateButton.textContent = this.state.busy ? "Working..." : "Download PDF";
 
     this.renderPreview(active);
     this.renderThumbnailList();
@@ -1398,8 +1406,8 @@ class PhotoPdfConverter extends HTMLElement {
 
     const totalBytes = this.state.items.reduce((sum, item) => sum + item.size, 0);
     this.refs.uploadSummary.textContent = this.state.items.length
-      ? `${this.state.items.length} image${this.state.items.length === 1 ? "" : "s"} ready • ${formatBytes(totalBytes)} selected`
-      : "Supports one or many images at once.";
+      ? `${this.state.items.length} image${this.state.items.length === 1 ? "" : "s"} / ${formatBytes(totalBytes)}`
+      : "No images added.";
   }
 
   renderPreview(active) {
@@ -1417,7 +1425,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.previewMeta.hidden = false;
     this.refs.previewImage.src = active.objectUrl;
     this.refs.previewName.textContent = active.name;
-    this.refs.previewDetails.textContent = `${active.width} x ${active.height} px • ${formatBytes(active.size)}`;
+    this.refs.previewDetails.textContent = `${active.width} x ${active.height} px / ${formatBytes(active.size)}`;
     this.refs.previewOrder.textContent = `Page ${pageNumber}`;
   }
 
@@ -1440,11 +1448,11 @@ class PhotoPdfConverter extends HTMLElement {
                 <span class="order-pill">${String(index + 1).padStart(2, "0")}</span>
                 <div class="thumb-name">${escapeHtml(item.name)}</div>
               </div>
-              <div class="thumb-details">${item.width} x ${item.height} px • ${formatBytes(item.size)}</div>
+              <div class="thumb-details">${item.width} x ${item.height} px / ${formatBytes(item.size)}</div>
               <div class="thumb-actions">
                 <button class="utility-button" type="button" data-action="select" data-id="${item.id}">Preview</button>
-                <button class="utility-button" type="button" data-action="up" data-id="${item.id}" ${index === 0 ? "disabled" : ""}>Earlier</button>
-                <button class="utility-button" type="button" data-action="down" data-id="${item.id}" ${index === this.state.items.length - 1 ? "disabled" : ""}>Later</button>
+                <button class="utility-button" type="button" data-action="up" data-id="${item.id}" ${index === 0 ? "disabled" : ""}>Up</button>
+                <button class="utility-button" type="button" data-action="down" data-id="${item.id}" ${index === this.state.items.length - 1 ? "disabled" : ""}>Down</button>
                 <button class="utility-button" type="button" data-action="remove" data-id="${item.id}">Remove</button>
               </div>
             </div>
@@ -1467,8 +1475,8 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.marginValue.textContent = `${settings.margin} pt`;
     this.refs.qualityValue.textContent = `${Math.round(settings.quality * 100)}%`;
     this.refs.summaryPages.textContent = String(this.state.items.length);
-    this.refs.summaryLayout.textContent = `${pageLabel} • ${orientationLabel}`;
-    this.refs.summaryMargin.textContent = `${settings.margin} pt margins`;
+    this.refs.summaryLayout.textContent = `${pageLabel} / ${orientationLabel}`;
+    this.refs.summaryMargin.textContent = `${settings.margin} pt`;
     this.refs.summaryQuality.textContent = `${Math.round(settings.quality * 100)}%`;
     this.refs.metricCount.textContent = String(this.state.items.length);
     this.refs.metricPage.textContent = pageLabel;
@@ -1508,7 +1516,7 @@ class PhotoPdfConverter extends HTMLElement {
 
     this.state.busy = true;
     this.render();
-    this.setStatus("Preparing the PDF engine...", "working");
+    this.setStatus("Loading PDF engine...", "working");
     await waitForPaint();
 
     try {
@@ -1525,7 +1533,7 @@ class PhotoPdfConverter extends HTMLElement {
               : "portrait"
             : settings.orientation;
 
-        this.setStatus(`Building page ${index + 1} of ${this.state.items.length}...`, "working");
+        this.setStatus(`Page ${index + 1} of ${this.state.items.length}...`, "working");
         await waitForPaint();
 
         if (!documentRef) {
@@ -1558,10 +1566,10 @@ class PhotoPdfConverter extends HTMLElement {
 
       const outputName = `${settings.filename}.pdf`;
       documentRef.save(outputName);
-      this.setStatus(`Your PDF is ready. Download started for ${outputName}.`, "success");
+      this.setStatus(`PDF ready: ${outputName}`, "success");
     } catch (error) {
       console.error(error);
-      this.setStatus(error?.message || "Something went wrong while creating the PDF.", "error");
+      this.setStatus(error?.message || "Could not create the PDF.", "error");
     } finally {
       this.state.busy = false;
       this.render();
