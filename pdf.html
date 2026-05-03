@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photo PDF Converter Web Example</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+        color: #13263d;
+      }
+
+      .page {
+        width: min(1200px, calc(100% - 24px));
+        margin: 0 auto;
+        padding: 24px 0 40px;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <photo-pdf-converter
+        heading="Photo to PDF"
+        subheading="Upload, reorder, and download."
+        filename="my-photos"
+      ></photo-pdf-converter>
+    </div>
+
+    <script src="./photo-pdf-converter-single.js"></script>
+  </body>
+</html>
