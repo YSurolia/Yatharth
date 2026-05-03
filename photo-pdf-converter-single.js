@@ -6,6 +6,8 @@ const PAGE_LABELS = {
   a5: "A5",
 };
 
+const IMAGE_FILE_NAME_PATTERN = /\.(avif|bmp|gif|heic|heif|jfif|jpeg|jpg|png|webp)$/i;
+
 function ensureJsPdf() {
   if (window.jspdf && window.jspdf.jsPDF) {
     return Promise.resolve(window.jspdf.jsPDF);
@@ -74,6 +76,18 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function isImageLikeFile(file) {
+  if (!file) {
+    return false;
+  }
+
+  if (typeof file.type === "string" && file.type.startsWith("image/")) {
+    return true;
+  }
+
+  return IMAGE_FILE_NAME_PATTERN.test(file.name || "");
 }
 
 function loadImage(url) {
@@ -509,6 +523,32 @@ class PhotoPdfConverter extends HTMLElement {
           cursor: not-allowed;
           transform: none;
           box-shadow: none;
+        }
+
+        .file-trigger {
+          position: relative;
+          overflow: hidden;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        .file-trigger input[type="file"] {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          cursor: pointer;
+        }
+
+        .file-trigger.disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+          pointer-events: none;
         }
 
         .primary-button {
@@ -962,7 +1002,6 @@ class PhotoPdfConverter extends HTMLElement {
 
             <div class="dropzone" id="dropzone">
               <input id="fileInput" type="file" accept="image/*" multiple hidden />
-              <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
               <div class="drop-art" aria-hidden="true">
                 <span></span>
                 <span></span>
@@ -972,7 +1011,10 @@ class PhotoPdfConverter extends HTMLElement {
               <p>Drag and drop or click to browse.</p>
               <div class="button-row">
                 <button id="pickButton" class="primary-button" type="button">Add photos</button>
-                <button id="cameraButton" class="ghost-button" type="button">Take photo</button>
+                <label id="cameraButton" class="ghost-button file-trigger">
+                  <span>Take photo</span>
+                  <input id="cameraInput" type="file" accept="image/*" capture="environment" />
+                </label>
                 <button id="clearButton" class="ghost-button" type="button">Clear</button>
               </div>
               <p class="micro-copy" id="uploadSummary">No images added.</p>
@@ -1126,9 +1168,8 @@ class PhotoPdfConverter extends HTMLElement {
 
   bindEvents() {
     this.refs.pickButton.addEventListener("click", () => this.refs.fileInput.click());
-    this.refs.cameraButton.addEventListener("click", () => this.refs.cameraInput.click());
     this.refs.dropzone.addEventListener("click", (event) => {
-      if (event.target.closest("button")) {
+      if (event.target.closest("button, .file-trigger")) {
         return;
       }
 
@@ -1292,7 +1333,7 @@ class PhotoPdfConverter extends HTMLElement {
       return;
     }
 
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    const imageFiles = files.filter((file) => isImageLikeFile(file));
     const skipped = files.length - imageFiles.length;
 
     if (!imageFiles.length) {
@@ -1318,8 +1359,8 @@ class PhotoPdfConverter extends HTMLElement {
     }
 
     this.state.items.push(...loadedItems);
-    if (!this.state.activeId && loadedItems.length) {
-      this.state.activeId = loadedItems[0].id;
+    if (loadedItems.length) {
+      this.state.activeId = loadedItems[loadedItems.length - 1].id;
     }
 
     this.state.busy = false;
@@ -1450,9 +1491,13 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.pickButton.disabled = this.state.busy;
     this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
-    this.refs.cameraButton.disabled = this.state.busy;
+    this.refs.cameraInput.disabled = this.state.busy;
+    this.refs.cameraButton.classList.toggle("disabled", this.state.busy);
     this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
-    this.refs.cameraButton.textContent = "Take photo";
+    const cameraLabel = this.refs.cameraButton.querySelector("span");
+    if (cameraLabel) {
+      cameraLabel.textContent = "Take photo";
+    }
     this.refs.generateButton.textContent = this.state.busy ? "Working..." : "Download PDF";
 
     this.renderPreview(active);
