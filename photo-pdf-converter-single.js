@@ -97,15 +97,12 @@ class PhotoPdfConverter extends HTMLElement {
       items: [],
       activeId: null,
       busy: false,
-      cameraOpen: false,
-      cameraBusy: false,
       statusTone: "info",
       statusMessage: "Add photos to start.",
     };
     this.dragDepth = 0;
     this.draggedId = null;
     this.initialized = false;
-    this.cameraStream = null;
     this.handleFilenameInput = () => {
       this.refs.filenameInput.dataset.autoManaged = "false";
     };
@@ -126,8 +123,6 @@ class PhotoPdfConverter extends HTMLElement {
   }
 
   disconnectedCallback() {
-    this.stopCameraStream();
-
     for (const item of this.state.items) {
       URL.revokeObjectURL(item.objectUrl);
     }
@@ -967,6 +962,7 @@ class PhotoPdfConverter extends HTMLElement {
 
             <div class="dropzone" id="dropzone">
               <input id="fileInput" type="file" accept="image/*" multiple hidden />
+              <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
               <div class="drop-art" aria-hidden="true">
                 <span></span>
                 <span></span>
@@ -976,24 +972,10 @@ class PhotoPdfConverter extends HTMLElement {
               <p>Drag and drop or click to browse.</p>
               <div class="button-row">
                 <button id="pickButton" class="primary-button" type="button">Add photos</button>
-                <button id="cameraButton" class="ghost-button" type="button">Open camera</button>
+                <button id="cameraButton" class="ghost-button" type="button">Take photo</button>
                 <button id="clearButton" class="ghost-button" type="button">Clear</button>
               </div>
               <p class="micro-copy" id="uploadSummary">No images added.</p>
-            </div>
-
-            <div id="cameraPanel" class="camera-panel" hidden>
-              <div class="camera-stage">
-                <video id="cameraVideo" class="camera-video" playsinline autoplay muted hidden></video>
-                <div id="cameraPlaceholder" class="camera-placeholder">
-                  <strong>Camera preview</strong>
-                  <span>Allow access, then capture a photo.</span>
-                </div>
-              </div>
-              <div class="camera-actions">
-                <button id="captureButton" class="primary-button" type="button">Capture</button>
-                <button id="closeCameraButton" class="ghost-button" type="button">Close</button>
-              </div>
             </div>
 
             <div id="status" class="status info" role="status" aria-live="polite"></div>
@@ -1110,16 +1092,12 @@ class PhotoPdfConverter extends HTMLElement {
       heading: this.shadowRoot.getElementById("heading"),
       subheading: this.shadowRoot.getElementById("subheading"),
       fileInput: this.shadowRoot.getElementById("fileInput"),
+      cameraInput: this.shadowRoot.getElementById("cameraInput"),
       dropzone: this.shadowRoot.getElementById("dropzone"),
       pickButton: this.shadowRoot.getElementById("pickButton"),
       cameraButton: this.shadowRoot.getElementById("cameraButton"),
       clearButton: this.shadowRoot.getElementById("clearButton"),
       uploadSummary: this.shadowRoot.getElementById("uploadSummary"),
-      cameraPanel: this.shadowRoot.getElementById("cameraPanel"),
-      cameraVideo: this.shadowRoot.getElementById("cameraVideo"),
-      cameraPlaceholder: this.shadowRoot.getElementById("cameraPlaceholder"),
-      captureButton: this.shadowRoot.getElementById("captureButton"),
-      closeCameraButton: this.shadowRoot.getElementById("closeCameraButton"),
       status: this.shadowRoot.getElementById("status"),
       previewImage: this.shadowRoot.getElementById("previewImage"),
       emptyPreview: this.shadowRoot.getElementById("emptyPreview"),
@@ -1148,16 +1126,7 @@ class PhotoPdfConverter extends HTMLElement {
 
   bindEvents() {
     this.refs.pickButton.addEventListener("click", () => this.refs.fileInput.click());
-    this.refs.cameraButton.addEventListener("click", async () => {
-      if (this.state.cameraOpen) {
-        this.closeCamera();
-        return;
-      }
-
-      await this.openCamera();
-    });
-    this.refs.captureButton.addEventListener("click", async () => this.capturePhoto());
-    this.refs.closeCameraButton.addEventListener("click", () => this.closeCamera());
+    this.refs.cameraButton.addEventListener("click", () => this.refs.cameraInput.click());
     this.refs.dropzone.addEventListener("click", (event) => {
       if (event.target.closest("button")) {
         return;
@@ -1167,6 +1136,12 @@ class PhotoPdfConverter extends HTMLElement {
     });
 
     this.refs.fileInput.addEventListener("change", async (event) => {
+      const files = Array.from(event.target.files || []);
+      event.target.value = "";
+      await this.handleFiles(files);
+    });
+
+    this.refs.cameraInput.addEventListener("change", async (event) => {
       const files = Array.from(event.target.files || []);
       event.target.value = "";
       await this.handleFiles(files);
@@ -1382,168 +1357,6 @@ class PhotoPdfConverter extends HTMLElement {
     }
   }
 
-  isCameraSupported() {
-    return Boolean(globalThis.navigator?.mediaDevices?.getUserMedia);
-  }
-
-  stopCameraStream() {
-    if (this.cameraStream) {
-      for (const track of this.cameraStream.getTracks()) {
-        track.stop();
-      }
-      this.cameraStream = null;
-    }
-
-    if (this.refs?.cameraVideo) {
-      this.refs.cameraVideo.pause?.();
-      this.refs.cameraVideo.srcObject = null;
-    }
-  }
-
-  getCameraErrorMessage(error) {
-    if (!this.isCameraSupported()) {
-      return "Camera needs HTTPS or localhost.";
-    }
-
-    if (error?.name === "NotAllowedError" || error?.name === "SecurityError") {
-      return "Camera permission was denied.";
-    }
-
-    if (error?.name === "NotFoundError" || error?.name === "DevicesNotFoundError") {
-      return "No camera was found.";
-    }
-
-    if (error?.name === "NotReadableError" || error?.name === "TrackStartError") {
-      return "The camera is already in use.";
-    }
-
-    return "Could not open the camera.";
-  }
-
-  async openCamera() {
-    if (!this.isCameraSupported()) {
-      this.setStatus("Camera needs HTTPS or localhost.", "error");
-      return;
-    }
-
-    if (this.state.cameraBusy || this.cameraStream) {
-      return;
-    }
-
-    this.state.cameraOpen = true;
-    this.state.cameraBusy = true;
-    this.render();
-    this.setStatus("Opening camera...", "working");
-
-    try {
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-          },
-          audio: false,
-        });
-      } catch (error) {
-        if (
-          error?.name === "NotAllowedError" ||
-          error?.name === "SecurityError" ||
-          error?.name === "NotFoundError" ||
-          error?.name === "DevicesNotFoundError"
-        ) {
-          throw error;
-        }
-
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
-      }
-
-      this.cameraStream = stream;
-      this.refs.cameraVideo.srcObject = stream;
-      await this.refs.cameraVideo.play().catch(() => {});
-      this.state.cameraBusy = false;
-      this.render();
-      this.setStatus("Camera ready.", "info");
-    } catch (error) {
-      this.stopCameraStream();
-      this.state.cameraOpen = false;
-      this.state.cameraBusy = false;
-      this.render();
-      this.setStatus(this.getCameraErrorMessage(error), "error");
-    }
-  }
-
-  closeCamera(options = {}) {
-    this.stopCameraStream();
-    this.state.cameraOpen = false;
-    this.state.cameraBusy = false;
-    this.render();
-
-    if (!options.silent) {
-      this.setStatus("Camera closed.", "info");
-    }
-  }
-
-  async capturePhoto() {
-    if (!this.cameraStream || this.state.cameraBusy || this.state.busy) {
-      return;
-    }
-
-    const video = this.refs.cameraVideo;
-    if (!video.videoWidth || !video.videoHeight) {
-      this.setStatus("Camera is still starting.", "error");
-      return;
-    }
-
-    this.state.cameraBusy = true;
-    this.render();
-
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const context = canvas.getContext("2d", { alpha: false });
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          (value) => {
-            if (value) {
-              resolve(value);
-              return;
-            }
-
-            reject(new Error("Could not capture the photo."));
-          },
-          "image/jpeg",
-          0.92
-        );
-      });
-
-      const file = new File(
-        [blob],
-        `camera-${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`,
-        {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        }
-      );
-
-      this.state.cameraBusy = false;
-      this.render();
-      await this.handleFiles([file]);
-    } catch (error) {
-      this.state.cameraBusy = false;
-      this.render();
-      this.setStatus(error?.message || "Could not capture the photo.", "error");
-    }
-  }
-
   clearAll() {
     for (const item of this.state.items) {
       URL.revokeObjectURL(item.objectUrl);
@@ -1634,25 +1447,12 @@ class PhotoPdfConverter extends HTMLElement {
       this.state.activeId = active.id;
     }
 
-    const cameraSupported = this.isCameraSupported();
-    this.refs.pickButton.disabled = this.state.busy || this.state.cameraBusy;
-    this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy || this.state.cameraBusy;
-    this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy || this.state.cameraBusy;
-    this.refs.cameraButton.disabled = !cameraSupported || this.state.busy || this.state.cameraBusy;
-    this.refs.cameraPanel.hidden = !this.state.cameraOpen;
-    this.refs.cameraVideo.hidden = !this.cameraStream;
-    this.refs.cameraPlaceholder.hidden = Boolean(this.cameraStream);
-    this.refs.captureButton.disabled = !this.cameraStream || this.state.busy || this.state.cameraBusy;
-    this.refs.closeCameraButton.disabled = this.state.cameraBusy;
+    this.refs.pickButton.disabled = this.state.busy;
+    this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy;
+    this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
+    this.refs.cameraButton.disabled = this.state.busy;
     this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
-    this.refs.cameraButton.textContent = !cameraSupported
-      ? "Camera unavailable"
-      : this.state.cameraBusy && !this.cameraStream
-        ? "Opening..."
-        : this.state.cameraOpen
-          ? "Hide camera"
-          : "Open camera";
-    this.refs.captureButton.textContent = this.state.cameraBusy && this.cameraStream ? "Saving..." : "Capture";
+    this.refs.cameraButton.textContent = "Take photo";
     this.refs.generateButton.textContent = this.state.busy ? "Working..." : "Download PDF";
 
     this.renderPreview(active);
