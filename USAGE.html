@@ -26,6 +26,40 @@
         margin-top: 0;
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 18px 0 6px;
+      }
+
+      .download-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 0 18px;
+        border-radius: 14px;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 700;
+        background: linear-gradient(180deg, #3b82f6, #2563eb);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+      }
+
+      .download-button.secondary {
+        background: #1b2a42;
+        color: #dbe9ff;
+        box-shadow: none;
+      }
+
+      .note {
+        margin: 0 0 18px;
+        color: #9eb5d7;
+        line-height: 1.6;
+      }
+
       pre {
         margin: 14px 0 0;
         padding: 18px;
@@ -39,6 +73,14 @@
   <body>
     <div class="card">
       <h1>Use this on your website</h1>
+      <div class="actions">
+        <a class="download-button" href="./photo-pdf-converter-single.js" download="photo-pdf-converter-single.js">Download JS File</a>
+        <a class="download-button secondary" href="./PhotoPdfDropinKit.zip" download="PhotoPdfDropinKit.zip">Download Full Kit</a>
+      </div>
+      <p class="note">
+        Use the JS file if you only want the widget, or download the full kit if you
+        want the example page and usage page too.
+      </p>
       <pre>&lt;script src="./photo-pdf-converter-single.js"&gt;&lt;/script&gt;
 &lt;photo-pdf-converter
   heading="Photo to PDF"
