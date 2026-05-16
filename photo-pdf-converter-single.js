@@ -1010,11 +1010,7 @@ class PhotoPdfConverter extends HTMLElement {
           inset: 0;
           z-index: 9999;
           display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 16px;
-          background: rgba(8, 18, 35, 0.78);
-          backdrop-filter: blur(8px);
+          background: #050a14;
           animation: fade-in 180ms ease both;
         }
 
@@ -1024,69 +1020,76 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .camera-dialog {
-          width: min(720px, 100%);
-          max-height: calc(100vh - 32px);
+          width: 100%;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          border-radius: 24px;
-          overflow: hidden;
-          background: #0b1525;
+          background: #050a14;
           color: #f5f9ff;
-          box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
-          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .camera-header {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 2;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 14px 18px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.03);
+          padding: 16px 20px;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
         }
 
         .camera-header strong {
           font-family: "Sora", "Plus Jakarta Sans", sans-serif;
-          font-size: 1rem;
+          font-size: 1.05rem;
           letter-spacing: -0.02em;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
 
         .camera-header .camera-count {
-          font-size: 0.85rem;
-          color: rgba(231, 240, 255, 0.7);
+          font-size: 0.88rem;
+          color: rgba(231, 240, 255, 0.85);
+          padding: 5px 11px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.35);
+          backdrop-filter: blur(6px);
         }
 
         .camera-close {
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(0, 0, 0, 0.45);
           color: #f5f9ff;
           border-radius: 999px;
-          width: 34px;
-          height: 34px;
+          width: 38px;
+          height: 38px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          font-size: 1.1rem;
+          font-size: 1.2rem;
           line-height: 1;
+          backdrop-filter: blur(6px);
         }
 
         .camera-close:hover {
-          background: rgba(255, 255, 255, 0.16);
+          background: rgba(0, 0, 0, 0.6);
         }
 
         .camera-stage {
           position: relative;
-          background: #000;
-          aspect-ratio: 4 / 3;
+          flex: 1;
+          min-height: 0;
           width: 100%;
           overflow: hidden;
+          background: #000;
         }
 
         .camera-stage video {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
           display: block;
         }
 
@@ -1108,30 +1111,46 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .camera-error {
-          padding: 22px;
+          position: absolute;
+          inset: 0;
+          z-index: 3;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 32px;
           text-align: center;
           color: #ffd1d1;
-          font-size: 0.95rem;
-          line-height: 1.55;
-          background: rgba(255, 80, 80, 0.08);
+          font-size: 1rem;
+          line-height: 1.6;
+          background: rgba(8, 18, 35, 0.92);
+        }
+
+        .camera-bottom {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 2;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.8) 100%);
+          padding-top: 28px;
         }
 
         .camera-tray {
           display: flex;
           gap: 8px;
           overflow-x: auto;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.03);
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          min-height: 78px;
+          padding: 4px 16px 12px;
+          min-height: 70px;
+          scrollbar-width: thin;
         }
 
         .camera-tray:empty::before {
           content: "Captured photos will appear here.";
-          color: rgba(231, 240, 255, 0.45);
+          color: rgba(231, 240, 255, 0.7);
           font-size: 0.85rem;
           align-self: center;
           padding: 0 4px;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
 
         .camera-tray img {
@@ -1139,7 +1158,8 @@ class PhotoPdfConverter extends HTMLElement {
           height: 56px;
           object-fit: cover;
           border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.18);
+          border: 2px solid rgba(255, 255, 255, 0.55);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
           flex: 0 0 auto;
           animation: pop-in 240ms ease both;
         }
@@ -1154,8 +1174,7 @@ class PhotoPdfConverter extends HTMLElement {
           grid-template-columns: 1fr auto 1fr;
           gap: 12px;
           align-items: center;
-          padding: 16px 18px 22px;
-          background: rgba(255, 255, 255, 0.02);
+          padding: 14px 18px max(22px, env(safe-area-inset-bottom, 22px));
         }
 
         .camera-controls .left {
@@ -1405,22 +1424,24 @@ class PhotoPdfConverter extends HTMLElement {
 
       <div id="cameraModal" class="camera-modal" hidden role="dialog" aria-modal="true" aria-label="Take photo">
         <div class="camera-dialog">
-          <div class="camera-header">
-            <strong>Camera</strong>
-            <span class="camera-count" id="cameraCount">0 captured</span>
-            <button type="button" class="camera-close" id="cameraCloseButton" aria-label="Close camera">&times;</button>
-          </div>
           <div class="camera-stage" id="cameraStage">
             <video id="cameraVideo" autoplay playsinline muted></video>
             <div id="cameraFlash" class="camera-flash"></div>
-          </div>
-          <div id="cameraError" class="camera-error" hidden></div>
-          <div id="cameraTray" class="camera-tray"></div>
-          <div class="camera-controls">
-            <div class="left"></div>
-            <button type="button" id="cameraShutter" class="camera-shutter" aria-label="Capture photo"></button>
-            <div class="right">
-              <button type="button" id="cameraDoneButton" class="camera-text-button primary">Done</button>
+            <div class="camera-header">
+              <strong>Camera</strong>
+              <span class="camera-count" id="cameraCount">0 captured</span>
+              <button type="button" class="camera-close" id="cameraCloseButton" aria-label="Close camera">&times;</button>
+            </div>
+            <div id="cameraError" class="camera-error" hidden></div>
+            <div class="camera-bottom">
+              <div id="cameraTray" class="camera-tray"></div>
+              <div class="camera-controls">
+                <div class="left"></div>
+                <button type="button" id="cameraShutter" class="camera-shutter" aria-label="Capture photo"></button>
+                <div class="right">
+                  <button type="button" id="cameraDoneButton" class="camera-text-button primary">Done</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
