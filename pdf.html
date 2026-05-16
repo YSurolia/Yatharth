@@ -3,31 +3,599 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Photo PDF Converter Web Example</title>
+    <title>Photo PDF Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      :root {
+        --ink: #0c1d33;
+        --ink-soft: #1a2e4a;
+        --muted: #607690;
+        --accent: #1583ff;
+        --accent-deep: #0b5bc8;
+        --line: rgba(173, 196, 223, 0.55);
+        --line-soft: rgba(173, 196, 223, 0.32);
+        --glass: rgba(255, 255, 255, 0.72);
+        --shadow-card: 0 24px 48px rgba(15, 30, 55, 0.1);
+        --shadow-deep: 0 36px 80px rgba(11, 26, 50, 0.18);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "Segoe UI", Arial, sans-serif;
-        background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
-        color: #13263d;
+        font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(1200px 480px at 12% -10%, rgba(70, 158, 255, 0.28), transparent 60%),
+          radial-gradient(900px 420px at 92% -20%, rgba(140, 225, 255, 0.18), transparent 65%),
+          linear-gradient(180deg, #07142a 0 220px, #eef3fa 220px 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 100% 120px, 120px 100%;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 30%);
+        pointer-events: none;
+        z-index: 0;
       }
 
       .page {
-        width: min(1200px, calc(100% - 24px));
+        position: relative;
+        z-index: 1;
+        width: min(1280px, calc(100% - 28px));
         margin: 0 auto;
-        padding: 24px 0 40px;
+        padding: 22px 0 56px;
       }
 
+      /* ---------- Masthead ---------- */
+
+      .masthead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 22px;
+        color: #f3f8ff;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #31a2ff, #0b5fd7);
+        box-shadow: 0 18px 30px rgba(9, 95, 215, 0.32);
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 999px;
+      }
+
+      .brand-mark::before {
+        width: 20px;
+        height: 4px;
+        left: 13px;
+        top: 21px;
+      }
+
+      .brand-mark::after {
+        width: 4px;
+        height: 20px;
+        left: 21px;
+        top: 13px;
+      }
+
+      .brand-copy strong {
+        display: block;
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-size: 1.02rem;
+        letter-spacing: -0.03em;
+      }
+
+      .brand-copy span {
+        color: rgba(231, 240, 255, 0.74);
+        font-size: 0.9rem;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .nav-links a {
+        color: rgba(231, 240, 255, 0.78);
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 0.92rem;
+        font-weight: 600;
+        transition:
+          background-color 160ms ease,
+          color 160ms ease;
+      }
+
+      .nav-links a:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f3f8ff;
+        font-size: 0.88rem;
+      }
+
+      .status-pill::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #4ade80;
+        box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18);
+      }
+
+      /* ---------- App frame (the converter) ---------- */
+
+      .app-frame {
+        padding: 18px;
+        border-radius: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.4));
+        backdrop-filter: blur(14px);
+        box-shadow: var(--shadow-deep);
+        margin-bottom: 56px;
+      }
+
+      photo-pdf-converter {
+        display: block;
+      }
+
+      /* ---------- About section divider ---------- */
+
+      .section-divider {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin: 56px 0 26px;
+        color: var(--muted);
+      }
+
+      .section-divider::before,
+      .section-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--line), transparent);
+      }
+
+      .section-divider span {
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--ink-soft);
+        opacity: 0.7;
+      }
+
+      /* ---------- Pitch (was hero) ---------- */
+
+      .pitch {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.85fr);
+        gap: 22px;
+        margin-bottom: 28px;
+      }
+
+      .pitch-card,
+      .feature-card,
+      .mini-panel {
+        border-radius: 28px;
+      }
+
+      .pitch-card {
+        position: relative;
+        overflow: hidden;
+        padding: 36px;
+        border: 1px solid var(--line-soft);
+        background:
+          radial-gradient(circle at top right, rgba(21, 131, 255, 0.1), transparent 55%),
+          linear-gradient(180deg, #ffffff, #f4f8ff);
+        box-shadow: var(--shadow-card);
+      }
+
+      .pitch-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -40px -60px auto;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(21, 131, 255, 0.16), transparent 65%);
+        pointer-events: none;
+      }
+
+      .pitch-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(21, 131, 255, 0.22);
+        background: rgba(21, 131, 255, 0.08);
+        color: var(--accent-deep);
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .pitch-card h2 {
+        margin: 18px 0 14px;
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-size: clamp(2rem, 3.6vw, 3.2rem);
+        line-height: 1.02;
+        letter-spacing: -0.05em;
+        max-width: 14ch;
+        color: var(--ink);
+      }
+
+      .pitch-card p {
+        margin: 0;
+        max-width: 56ch;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 1rem;
+      }
+
+      .pitch-points {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 24px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .pitch-points li {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--ink);
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .pitch-points li::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .feature-card {
+        padding: 30px;
+        border: 1px solid var(--line-soft);
+        background: linear-gradient(180deg, rgba(250, 252, 255, 0.96), rgba(255, 255, 255, 0.88));
+        box-shadow: var(--shadow-card);
+      }
+
+      .feature-card h3 {
+        margin: 0 0 18px;
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      .feature-list {
+        display: grid;
+        gap: 16px;
+      }
+
+      .feature-item {
+        position: relative;
+        padding: 14px 0 14px 36px;
+        border-top: 1px solid rgba(173, 196, 223, 0.4);
+      }
+
+      .feature-item:first-child {
+        padding-top: 0;
+        border-top: none;
+      }
+
+      .feature-item::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 16px;
+        width: 22px;
+        height: 22px;
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(21, 131, 255, 0.18), rgba(21, 131, 255, 0.06));
+        border: 1px solid rgba(21, 131, 255, 0.25);
+      }
+
+      .feature-item:first-child::before {
+        top: 2px;
+      }
+
+      .feature-item::after {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 23px;
+        width: 10px;
+        height: 5px;
+        border-left: 2px solid var(--accent-deep);
+        border-bottom: 2px solid var(--accent-deep);
+        transform: rotate(-45deg);
+      }
+
+      .feature-item:first-child::after {
+        top: 9px;
+      }
+
+      .feature-item strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--ink);
+        font-size: 0.98rem;
+      }
+
+      .feature-item span {
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 0.92rem;
+      }
+
+      /* ---------- Bottom mini-panel grid ---------- */
+
+      .footer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .mini-panel {
+        position: relative;
+        padding: 24px 24px 22px;
+        border: 1px solid var(--line-soft);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 14px 32px rgba(15, 33, 58, 0.06);
+        transition:
+          transform 200ms ease,
+          box-shadow 200ms ease,
+          border-color 200ms ease;
+      }
+
+      .mini-panel:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 22px 44px rgba(15, 33, 58, 0.1);
+        border-color: rgba(21, 131, 255, 0.32);
+      }
+
+      .mini-panel-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        margin-bottom: 14px;
+        background: linear-gradient(180deg, rgba(21, 131, 255, 0.18), rgba(21, 131, 255, 0.06));
+        border: 1px solid rgba(21, 131, 255, 0.22);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent-deep);
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-weight: 800;
+        font-size: 0.9rem;
+      }
+
+      .mini-panel h3 {
+        margin: 0 0 8px;
+        font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+        font-size: 1rem;
+        letter-spacing: -0.02em;
+      }
+
+      .mini-panel p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 0.93rem;
+      }
+
+      /* ---------- Footer ---------- */
+
+      .page-footer {
+        margin-top: 40px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line-soft);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .page-footer .dot {
+        opacity: 0.4;
+        margin: 0 6px;
+      }
+
+      /* ---------- Responsive ---------- */
+
+      @media (max-width: 980px) {
+        .pitch,
+        .footer-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .pitch-card h2 {
+          max-width: none;
+        }
+
+        .nav-links {
+          display: none;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: min(100%, calc(100% - 18px));
+          padding: 16px 0 36px;
+        }
+
+        .masthead {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .app-frame {
+          padding: 12px;
+          border-radius: 24px;
+        }
+
+        .pitch-card,
+        .feature-card,
+        .mini-panel {
+          border-radius: 22px;
+          padding: 22px;
+        }
+
+        .section-divider {
+          margin: 40px 0 20px;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="page">
-      <photo-pdf-converter
-        heading="Photo to PDF"
-        subheading="Upload, reorder, and download."
-        filename="my-photos"
-      ></photo-pdf-converter>
+      <header class="masthead">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div class="brand-copy">
+            <strong>Photo PDF Studio</strong>
+            <span>Clean exports from a fast browser workflow</span>
+          </div>
+        </div>
+        <nav class="nav-links" aria-label="Page sections">
+          <a href="#about">About</a>
+          <a href="#features">Features</a>
+        </nav>
+        <div class="status-pill">100% local. Nothing uploaded.</div>
+      </header>
+
+      <section class="app-frame">
+        <photo-pdf-converter
+          heading="Build a polished PDF from your photos"
+          subheading="Add images, sort them into order, tweak the export settings, and download instantly."
+          filename="photo-stack"
+          accent="#1583ff"
+        ></photo-pdf-converter>
+      </section>
+
+      <div class="section-divider" id="about">
+        <span>About this tool</span>
+      </div>
+
+      <section class="pitch">
+        <article class="pitch-card">
+          <span class="pitch-tag">Photo to PDF</span>
+          <h2>Turn quick photo stacks into polished PDFs.</h2>
+          <p>
+            Drop images in, reorder the page flow, tune the layout, and download a clean
+            PDF in seconds. This UI is designed to feel fast, focused, and easy on both
+            desktop and mobile.
+          </p>
+          <ul class="pitch-points">
+            <li>Drag and drop queue</li>
+            <li>Live page preview</li>
+            <li>Browser-only processing</li>
+          </ul>
+        </article>
+
+        <aside class="feature-card" id="features">
+          <h3>Why this version feels better</h3>
+          <div class="feature-list">
+            <div class="feature-item">
+              <strong>Stronger visual hierarchy</strong>
+              <span>The page now frames the converter like a real product instead of a plain demo.</span>
+            </div>
+            <div class="feature-item">
+              <strong>Cleaner export flow</strong>
+              <span>Upload, arrange, and download areas are easier to scan and more distinct.</span>
+            </div>
+            <div class="feature-item">
+              <strong>Better mobile fit</strong>
+              <span>Cards collapse cleanly and spacing stays comfortable on smaller screens.</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="footer-grid">
+        <article class="mini-panel">
+          <span class="mini-panel-icon" aria-hidden="true">01</span>
+          <h3>Best for</h3>
+          <p>Receipts, handwritten notes, forms, study pages, quick scans, and simple document packs.</p>
+        </article>
+        <article class="mini-panel">
+          <span class="mini-panel-icon" aria-hidden="true">02</span>
+          <h3>What stays local</h3>
+          <p>Your image queue and PDF generation stay in the browser until you choose to download the file.</p>
+        </article>
+        <article class="mini-panel">
+          <span class="mini-panel-icon" aria-hidden="true">03</span>
+          <h3>Camera capture</h3>
+          <p>Use the in-browser camera to keep snapping page after page &mdash; the modal stays open until you're done.</p>
+        </article>
+      </section>
+
+      <footer class="page-footer">
+        <span>Photo PDF Studio <span class="dot">&middot;</span> Built to run entirely in your browser.</span>
+        <span>No accounts, no uploads, no tracking.</span>
+      </footer>
     </div>
 
     <script src="./photo-pdf-converter-single.js"></script>

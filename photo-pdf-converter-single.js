@@ -1,4 +1,4 @@
-let jsPdfLoader;
+﻿let jsPdfLoader;
 
 const PAGE_LABELS = {
   a4: "A4",
@@ -140,6 +140,16 @@ class PhotoPdfConverter extends HTMLElement {
     for (const item of this.state.items) {
       URL.revokeObjectURL(item.objectUrl);
     }
+    this.stopCameraStream();
+    if (this._onCameraKeydown) {
+      document.removeEventListener("keydown", this._onCameraKeydown);
+    }
+    if (this._cameraTrayUrls) {
+      for (const url of this._cameraTrayUrls) {
+        URL.revokeObjectURL(url);
+      }
+      this._cameraTrayUrls = [];
+    }
   }
 
   attributeChangedCallback() {
@@ -154,20 +164,18 @@ class PhotoPdfConverter extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          --accent: ${this.getAttribute("accent") || "#1d75ea"};
-          --accent-deep: #1457b8;
-          --text: #13263d;
-          --muted: #60718a;
-          --panel: rgba(255, 255, 255, 0.84);
-          --panel-edge: rgba(191, 210, 236, 0.9);
-          --line: #d7e5f6;
-          --line-strong: #bcd4ef;
-          --soft-blue: #eef5ff;
-          --surface: #f8fbff;
-          --shadow: 0 28px 70px rgba(35, 86, 150, 0.14);
+          --accent: ${this.getAttribute("accent") || "#1583ff"};
+          --accent-deep: #0b5bc8;
+          --text: #132948;
+          --muted: #627792;
+          --panel-edge: rgba(176, 197, 226, 0.6);
+          --line: rgba(175, 198, 227, 0.62);
+          --line-strong: rgba(84, 130, 200, 0.46);
+          --soft-blue: rgba(21, 131, 255, 0.1);
+          --shadow: 0 32px 80px rgba(15, 38, 71, 0.2);
           display: block;
           color: var(--text);
-          font-family: "Aptos", "Segoe UI", sans-serif;
+          font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
         }
 
         * {
@@ -188,56 +196,43 @@ class PhotoPdfConverter extends HTMLElement {
           border: none;
         }
 
+        :focus-visible {
+          outline: 3px solid rgba(21, 131, 255, 0.22);
+          outline-offset: 2px;
+        }
+
         .shell {
           position: relative;
           overflow: hidden;
-          border-radius: 34px;
-          border: 1px solid var(--panel-edge);
+          border-radius: 36px;
+          border: 1px solid rgba(176, 197, 226, 0.35);
           background:
-            radial-gradient(circle at 0% 0%, rgba(151, 204, 255, 0.28), transparent 24%),
-            radial-gradient(circle at 100% 0%, rgba(29, 117, 234, 0.12), transparent 26%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 248, 255, 0.92));
+            radial-gradient(900px 360px at -10% -20%, rgba(21, 131, 255, 0.1), transparent 60%),
+            radial-gradient(700px 320px at 110% -10%, rgba(129, 227, 255, 0.12), transparent 60%),
+            linear-gradient(180deg, #f3f7fc 0%, #e8eef7 100%);
           box-shadow: var(--shadow);
-          padding: 26px;
+          padding: 28px;
         }
 
-        .ambient,
-        .ambient::before,
-        .ambient::after {
+        .shell::before {
+          content: "";
           position: absolute;
-          pointer-events: none;
-          border-radius: 999px;
-          filter: blur(4px);
-        }
-
-        .ambient {
           inset: 0;
-        }
-
-        .ambient::before {
-          content: "";
-          width: 250px;
-          height: 250px;
-          top: -40px;
-          right: -20px;
-          background: radial-gradient(circle, rgba(29, 117, 234, 0.12), transparent 70%);
-        }
-
-        .ambient::after {
-          content: "";
-          width: 180px;
-          height: 180px;
-          left: -30px;
-          bottom: -20px;
-          background: radial-gradient(circle, rgba(145, 199, 255, 0.28), transparent 72%);
+          background:
+            linear-gradient(rgba(21, 131, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(21, 131, 255, 0.04) 1px, transparent 1px);
+          background-size: 100% 92px, 92px 100%;
+          mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 70%);
+          pointer-events: none;
         }
 
         .hero {
           position: relative;
+          z-index: 1;
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
-          margin-bottom: 14px;
+          grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.9fr);
+          gap: 18px;
+          margin-bottom: 22px;
           animation: rise 420ms ease both;
         }
 
@@ -246,20 +241,37 @@ class PhotoPdfConverter extends HTMLElement {
         .panel {
           position: relative;
           z-index: 1;
+          border-radius: 30px;
         }
 
         .hero-copy,
-        .hero-metrics,
-        .panel {
-          border-radius: 28px;
-          border: 1px solid rgba(201, 217, 238, 0.88);
-          background: var(--panel);
-          backdrop-filter: blur(14px);
-          box-shadow: 0 20px 40px rgba(40, 80, 135, 0.09);
+        .hero-metrics {
+          color: #f5f9ff;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background:
+            radial-gradient(circle at top left, rgba(73, 154, 255, 0.32), transparent 55%),
+            radial-gradient(circle at bottom right, rgba(129, 227, 255, 0.18), transparent 60%),
+            linear-gradient(180deg, #0e2240 0%, #081628 100%);
+          box-shadow: 0 24px 50px rgba(8, 22, 40, 0.35);
         }
 
         .hero-copy {
-          padding: 24px;
+          padding: 28px;
+        }
+
+        .hero-metrics {
+          display: grid;
+          gap: 12px;
+          padding: 20px;
+          align-content: start;
+        }
+
+        .panel {
+          border: 1px solid var(--panel-edge);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 250, 255, 0.96));
+          box-shadow: 0 20px 42px rgba(18, 48, 86, 0.1);
+          padding: 20px;
+          animation: rise 520ms ease both;
         }
 
         .eyebrow,
@@ -270,60 +282,89 @@ class PhotoPdfConverter extends HTMLElement {
           gap: 8px;
           padding: 8px 13px;
           border-radius: 999px;
-          background: rgba(29, 117, 234, 0.1);
-          color: var(--accent-deep);
-          font-size: 0.82rem;
-          font-weight: 700;
-          letter-spacing: 0.04em;
+          font-size: 0.8rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
+        .eyebrow {
+          background: rgba(130, 201, 255, 0.18);
+          color: #e8f4ff;
+        }
+
+        .panel-label {
+          background: rgba(21, 131, 255, 0.1);
+          border: 1px solid rgba(21, 131, 255, 0.12);
+          color: var(--accent-deep);
+        }
+
+        .mini-badge {
+          background: rgba(255, 255, 255, 0.12);
+          color: #f5f9ff;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
         .hero-copy h2 {
-          margin: 16px 0 10px;
-          font-size: clamp(2rem, 3vw, 3rem);
-          line-height: 1.04;
-          letter-spacing: -0.04em;
+          margin: 18px 0 12px;
+          font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+          font-size: clamp(2.2rem, 3vw, 3.35rem);
+          line-height: 0.98;
+          letter-spacing: -0.06em;
+          max-width: 12ch;
         }
 
         .hero-copy p {
           margin: 0;
-          color: var(--muted);
-          line-height: 1.55;
-          font-size: 0.96rem;
+          max-width: 52ch;
+          color: rgba(230, 239, 255, 0.8);
+          line-height: 1.7;
+          font-size: 0.98rem;
         }
 
-        .ambient,
-        .hero-metrics,
-        .eyebrow,
-        .panel-label,
-        .note,
-        .footnote {
-          display: none;
+        .hero-points {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 22px;
+        }
+
+        .hero-points span {
+          display: inline-flex;
+          align-items: center;
+          padding: 10px 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f7fbff;
+          font-size: 0.82rem;
         }
 
         .metric {
-          padding: 18px;
+          padding: 16px 18px;
           border-radius: 22px;
-          background: rgba(255, 255, 255, 0.82);
-          border: 1px solid rgba(208, 221, 240, 0.84);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .metric-label {
           display: block;
-          color: var(--muted);
+          color: rgba(230, 239, 255, 0.72);
           font-size: 0.88rem;
           margin-bottom: 6px;
         }
 
         .metric strong {
-          font-size: 1.8rem;
+          display: block;
+          color: #f7fbff;
+          font-size: 1.95rem;
           line-height: 1;
         }
 
         .metric small {
           display: block;
           margin-top: 8px;
-          color: var(--muted);
+          color: rgba(230, 239, 255, 0.72);
           line-height: 1.5;
         }
 
@@ -331,14 +372,14 @@ class PhotoPdfConverter extends HTMLElement {
           position: relative;
           z-index: 1;
           display: grid;
-          grid-template-columns: 1.02fr 1.16fr 0.92fr;
-          gap: 16px;
+          grid-template-columns: minmax(280px, 0.96fr) minmax(340px, 1.14fr) minmax(270px, 0.9fr);
+          gap: 18px;
           align-items: start;
         }
 
-        .panel {
-          padding: 18px;
-          animation: rise 520ms ease both;
+        .controls-panel {
+          position: sticky;
+          top: 18px;
         }
 
         .panel-header {
@@ -346,7 +387,7 @@ class PhotoPdfConverter extends HTMLElement {
           justify-content: space-between;
           gap: 14px;
           align-items: flex-start;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
 
         .panel-header h3 {
@@ -356,17 +397,18 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .panel-header p {
-          margin: 4px 0 0;
+          margin: 8px 0 0;
           color: var(--muted);
-          line-height: 1.45;
+          line-height: 1.55;
           font-size: 0.9rem;
         }
 
         .note {
           color: var(--muted);
           font-size: 0.88rem;
-          line-height: 1.5;
+          line-height: 1.55;
           text-align: right;
+          max-width: 21ch;
         }
 
         .dropzone {
@@ -374,12 +416,12 @@ class PhotoPdfConverter extends HTMLElement {
           display: grid;
           justify-items: center;
           text-align: center;
-          gap: 10px;
-          padding: 24px 16px;
-          border-radius: 22px;
+          gap: 12px;
+          padding: 28px 18px;
+          border-radius: 26px;
           border: 1.5px dashed var(--line-strong);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 247, 255, 0.95));
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 245, 255, 0.98));
+          cursor: pointer;
           transition:
             transform 160ms ease,
             border-color 160ms ease,
@@ -387,12 +429,25 @@ class PhotoPdfConverter extends HTMLElement {
             background 160ms ease;
         }
 
+        .dropzone > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        .dropzone::before {
+          content: "";
+          position: absolute;
+          inset: 10px;
+          border-radius: 20px;
+          background: radial-gradient(circle at top, rgba(21, 131, 255, 0.08), transparent 54%);
+          pointer-events: none;
+        }
+
         .dropzone.active {
-          transform: translateY(-2px);
+          transform: translateY(-3px);
           border-color: var(--accent);
-          box-shadow: 0 18px 32px rgba(29, 117, 234, 0.14);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(232, 244, 255, 1));
+          box-shadow: 0 22px 40px rgba(21, 131, 255, 0.18);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(232, 244, 255, 1));
         }
 
         .dropzone:hover {
@@ -401,27 +456,27 @@ class PhotoPdfConverter extends HTMLElement {
 
         .drop-art {
           position: relative;
-          width: 120px;
-          height: 82px;
-          margin-bottom: 4px;
+          width: 126px;
+          height: 92px;
+          margin-bottom: 6px;
         }
 
         .drop-art span {
           position: absolute;
           inset: 0;
-          border-radius: 20px;
+          border-radius: 24px;
           border: 1px solid rgba(166, 194, 226, 0.82);
           background: linear-gradient(180deg, #ffffff, #eaf3ff);
-          box-shadow: 0 16px 28px rgba(39, 92, 158, 0.08);
+          box-shadow: 0 18px 34px rgba(39, 92, 158, 0.08);
         }
 
         .drop-art span:nth-child(1) {
-          transform: rotate(-7deg) translate(-12px, 8px);
+          transform: rotate(-8deg) translate(-14px, 8px);
           opacity: 0.78;
         }
 
         .drop-art span:nth-child(2) {
-          transform: rotate(8deg) translate(12px, 8px);
+          transform: rotate(8deg) translate(14px, 8px);
           opacity: 0.82;
         }
 
@@ -429,12 +484,12 @@ class PhotoPdfConverter extends HTMLElement {
           display: grid;
           place-items: center;
           color: var(--accent);
-          font-size: 2rem;
-          font-weight: 700;
+          font-size: 2.1rem;
+          font-weight: 800;
         }
 
         .dropzone strong {
-          font-size: 1.04rem;
+          font-size: 1.14rem;
         }
 
         .dropzone p,
@@ -447,53 +502,10 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .button-row,
-        .thumb-actions,
-        .camera-actions {
+        .thumb-actions {
           display: flex;
           flex-wrap: wrap;
           gap: 10px;
-        }
-
-        .camera-panel {
-          margin-top: 12px;
-          padding: 12px;
-          border-radius: 20px;
-          border: 1px solid var(--line);
-          background: rgba(255, 255, 255, 0.76);
-        }
-
-        .camera-stage {
-          position: relative;
-          min-height: 220px;
-          overflow: hidden;
-          border-radius: 18px;
-          border: 1px solid rgba(191, 210, 236, 0.9);
-          background: linear-gradient(180deg, #f7fbff, #e8f1ff);
-          display: grid;
-          place-items: center;
-          margin-bottom: 12px;
-        }
-
-        .camera-video {
-          width: 100%;
-          height: 100%;
-          min-height: 220px;
-          object-fit: cover;
-          display: block;
-          background: #dfe8f6;
-        }
-
-        .camera-placeholder {
-          display: grid;
-          gap: 6px;
-          text-align: center;
-          color: var(--muted);
-          padding: 18px;
-        }
-
-        .camera-placeholder strong {
-          color: var(--text);
-          font-size: 1rem;
         }
 
         .primary-button,
@@ -554,8 +566,9 @@ class PhotoPdfConverter extends HTMLElement {
         .primary-button {
           padding: 14px 22px;
           color: #ffffff;
-          background: linear-gradient(180deg, var(--accent), #0e63d8);
-          box-shadow: 0 18px 28px rgba(29, 117, 234, 0.24);
+          background: linear-gradient(180deg, #2397ff, #0c66e6);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          box-shadow: 0 20px 34px rgba(21, 131, 255, 0.26);
         }
 
         .primary-button.wide {
@@ -566,8 +579,9 @@ class PhotoPdfConverter extends HTMLElement {
         .utility-button {
           padding: 12px 16px;
           color: var(--text);
-          background: linear-gradient(180deg, #ffffff, #edf5ff);
+          background: rgba(255, 255, 255, 0.92);
           border: 1px solid var(--line);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
         .utility-button {
@@ -579,7 +593,7 @@ class PhotoPdfConverter extends HTMLElement {
 
         .status {
           margin-top: 12px;
-          padding: 12px 14px;
+          padding: 13px 15px;
           border-radius: 16px;
           border: 1px solid transparent;
           font-size: 0.9rem;
@@ -612,15 +626,15 @@ class PhotoPdfConverter extends HTMLElement {
 
         .preview-stage {
           position: relative;
-          min-height: 330px;
+          min-height: 360px;
           border-radius: 26px;
           overflow: hidden;
           border: 1px solid var(--line);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 247, 255, 0.92));
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 241, 252, 0.96));
           display: grid;
           place-items: center;
           margin-bottom: 16px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
 
         .empty-preview {
@@ -633,9 +647,9 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .empty-spot {
-          width: 86px;
-          height: 86px;
-          border-radius: 28px;
+          width: 94px;
+          height: 94px;
+          border-radius: 30px;
           background: linear-gradient(180deg, #f7fbff, #dfeefe);
           border: 1px solid var(--line);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -646,28 +660,28 @@ class PhotoPdfConverter extends HTMLElement {
         .empty-spot::after {
           content: "";
           position: absolute;
-          background: rgba(29, 117, 234, 0.2);
+          background: rgba(21, 131, 255, 0.2);
         }
 
         .empty-spot::before {
           width: 30px;
           height: 4px;
           border-radius: 999px;
-          top: 41px;
-          left: 28px;
+          top: 45px;
+          left: 32px;
         }
 
         .empty-spot::after {
           width: 4px;
           height: 30px;
           border-radius: 999px;
-          top: 28px;
-          left: 41px;
+          top: 32px;
+          left: 45px;
         }
 
         .preview-image {
           width: 100%;
-          max-height: 540px;
+          max-height: 560px;
           object-fit: contain;
           display: block;
         }
@@ -683,9 +697,10 @@ class PhotoPdfConverter extends HTMLElement {
           align-items: flex-end;
           padding: 16px 18px;
           border-radius: 20px;
-          background: rgba(9, 19, 33, 0.72);
+          background: linear-gradient(180deg, rgba(7, 18, 33, 0.84), rgba(9, 25, 44, 0.76));
           color: #f4f8ff;
           backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .preview-meta strong {
@@ -702,9 +717,18 @@ class PhotoPdfConverter extends HTMLElement {
         .thumb-grid {
           display: grid;
           gap: 12px;
-          max-height: 440px;
+          max-height: 446px;
           overflow: auto;
           padding-right: 2px;
+        }
+
+        .thumb-grid::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .thumb-grid::-webkit-scrollbar-thumb {
+          border-radius: 999px;
+          background: rgba(141, 166, 199, 0.72);
         }
 
         .thumb-card {
@@ -714,7 +738,7 @@ class PhotoPdfConverter extends HTMLElement {
           padding: 12px;
           border-radius: 22px;
           border: 1px solid var(--line);
-          background: rgba(255, 255, 255, 0.86);
+          background: rgba(255, 255, 255, 0.94);
           transition:
             transform 150ms ease,
             border-color 150ms ease,
@@ -722,17 +746,17 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .thumb-card.active {
-          border-color: rgba(29, 117, 234, 0.48);
-          box-shadow: 0 14px 24px rgba(29, 117, 234, 0.12);
+          border-color: rgba(21, 131, 255, 0.48);
+          box-shadow: 0 16px 28px rgba(21, 131, 255, 0.14);
         }
 
         .thumb-card.drag-target {
           border-color: var(--accent);
-          box-shadow: 0 14px 24px rgba(29, 117, 234, 0.18);
+          box-shadow: 0 16px 28px rgba(21, 131, 255, 0.18);
         }
 
         .thumb-card:hover {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
 
         .thumb-image-button {
@@ -770,9 +794,9 @@ class PhotoPdfConverter extends HTMLElement {
 
         .order-pill {
           display: inline-flex;
-          min-width: 34px;
+          min-width: 36px;
           justify-content: center;
-          padding: 7px 9px;
+          padding: 7px 10px;
           border-radius: 999px;
           background: var(--soft-blue);
           color: var(--accent-deep);
@@ -795,7 +819,7 @@ class PhotoPdfConverter extends HTMLElement {
 
         .field-stack {
           display: grid;
-          gap: 12px;
+          gap: 14px;
         }
 
         .field-grid {
@@ -824,9 +848,10 @@ class PhotoPdfConverter extends HTMLElement {
           padding: 14px 16px;
           border-radius: 18px;
           border: 1px solid var(--line);
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.96);
           color: var(--text);
           outline: none;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
           transition:
             border-color 150ms ease,
             box-shadow 150ms ease;
@@ -834,8 +859,8 @@ class PhotoPdfConverter extends HTMLElement {
 
         .field input[type="text"]:focus,
         .field select:focus {
-          border-color: rgba(29, 117, 234, 0.48);
-          box-shadow: 0 0 0 4px rgba(29, 117, 234, 0.12);
+          border-color: rgba(21, 131, 255, 0.48);
+          box-shadow: 0 0 0 4px rgba(21, 131, 255, 0.12);
         }
 
         .field input[type="range"] {
@@ -844,14 +869,17 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .summary-card {
-          padding: 16px;
-          border-radius: 22px;
-          border: 1px solid var(--line);
-          background: linear-gradient(180deg, #ffffff, #edf5ff);
+          padding: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(84, 130, 200, 0.18);
+          background: linear-gradient(180deg, rgba(10, 43, 82, 0.98), rgba(18, 74, 138, 0.92));
+          box-shadow: 0 20px 34px rgba(12, 46, 88, 0.18);
+          color: rgba(236, 244, 255, 0.78);
         }
 
         .summary-card h4 {
           margin: 0 0 12px;
+          color: #ffffff;
           font-size: 0.96rem;
         }
 
@@ -861,8 +889,8 @@ class PhotoPdfConverter extends HTMLElement {
           gap: 12px;
           align-items: center;
           padding: 8px 0;
-          color: var(--muted);
-          border-top: 1px solid rgba(215, 229, 246, 0.85);
+          color: rgba(236, 244, 255, 0.72);
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .summary-row:first-of-type {
@@ -871,13 +899,14 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .summary-row strong {
-          color: var(--text);
+          color: #ffffff;
           text-align: right;
         }
 
         .footnote {
           margin-top: 12px;
           font-size: 0.9rem;
+          color: var(--muted);
         }
 
         @keyframes rise {
@@ -893,11 +922,16 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         @media (max-width: 1160px) {
+          .hero {
+            grid-template-columns: 1fr;
+          }
+
           .workspace {
             grid-template-columns: 1fr 1fr;
           }
 
           .controls-panel {
+            position: static;
             grid-column: 1 / -1;
           }
         }
@@ -905,7 +939,11 @@ class PhotoPdfConverter extends HTMLElement {
         @media (max-width: 860px) {
           .shell {
             padding: 16px;
-            border-radius: 26px;
+            border-radius: 28px;
+            background:
+              radial-gradient(circle at top left, rgba(73, 154, 255, 0.22), transparent 28%),
+              radial-gradient(circle at top right, rgba(129, 227, 255, 0.14), transparent 26%),
+              linear-gradient(180deg, #09182c 0 318px, #eef3fa 318px 100%);
           }
 
           .hero,
@@ -919,6 +957,10 @@ class PhotoPdfConverter extends HTMLElement {
             border-radius: 24px;
           }
 
+          .controls-panel {
+            grid-column: auto;
+          }
+
           .field-grid {
             grid-template-columns: 1fr;
           }
@@ -929,6 +971,10 @@ class PhotoPdfConverter extends HTMLElement {
           .hero-copy,
           .hero-metrics {
             padding: 16px;
+          }
+
+          .hero-copy h2 {
+            max-width: none;
           }
 
           .preview-stage {
@@ -955,25 +1001,254 @@ class PhotoPdfConverter extends HTMLElement {
 
           .note {
             text-align: left;
+            max-width: none;
+          }
+        }
+
+        .camera-modal {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          background: rgba(8, 18, 35, 0.78);
+          backdrop-filter: blur(8px);
+          animation: fade-in 180ms ease both;
+        }
+
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .camera-dialog {
+          width: min(720px, 100%);
+          max-height: calc(100vh - 32px);
+          display: flex;
+          flex-direction: column;
+          border-radius: 24px;
+          overflow: hidden;
+          background: #0b1525;
+          color: #f5f9ff;
+          box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .camera-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 18px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .camera-header strong {
+          font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+          font-size: 1rem;
+          letter-spacing: -0.02em;
+        }
+
+        .camera-header .camera-count {
+          font-size: 0.85rem;
+          color: rgba(231, 240, 255, 0.7);
+        }
+
+        .camera-close {
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f9ff;
+          border-radius: 999px;
+          width: 34px;
+          height: 34px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 1.1rem;
+          line-height: 1;
+        }
+
+        .camera-close:hover {
+          background: rgba(255, 255, 255, 0.16);
+        }
+
+        .camera-stage {
+          position: relative;
+          background: #000;
+          aspect-ratio: 4 / 3;
+          width: 100%;
+          overflow: hidden;
+        }
+
+        .camera-stage video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .camera-flash {
+          position: absolute;
+          inset: 0;
+          background: #fff;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .camera-flash.fire {
+          animation: flash 320ms ease;
+        }
+
+        @keyframes flash {
+          0% { opacity: 0.85; }
+          100% { opacity: 0; }
+        }
+
+        .camera-error {
+          padding: 22px;
+          text-align: center;
+          color: #ffd1d1;
+          font-size: 0.95rem;
+          line-height: 1.55;
+          background: rgba(255, 80, 80, 0.08);
+        }
+
+        .camera-tray {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          min-height: 78px;
+        }
+
+        .camera-tray:empty::before {
+          content: "Captured photos will appear here.";
+          color: rgba(231, 240, 255, 0.45);
+          font-size: 0.85rem;
+          align-self: center;
+          padding: 0 4px;
+        }
+
+        .camera-tray img {
+          width: 56px;
+          height: 56px;
+          object-fit: cover;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          flex: 0 0 auto;
+          animation: pop-in 240ms ease both;
+        }
+
+        @keyframes pop-in {
+          from { transform: scale(0.6); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+
+        .camera-controls {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 12px;
+          align-items: center;
+          padding: 16px 18px 22px;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .camera-controls .left {
+          justify-self: start;
+        }
+
+        .camera-controls .right {
+          justify-self: end;
+        }
+
+        .camera-shutter {
+          width: 72px;
+          height: 72px;
+          border-radius: 999px;
+          background: #fff;
+          border: 5px solid rgba(255, 255, 255, 0.35);
+          cursor: pointer;
+          box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+          transition: transform 120ms ease;
+        }
+
+        .camera-shutter:hover {
+          transform: scale(1.04);
+        }
+
+        .camera-shutter:active {
+          transform: scale(0.94);
+        }
+
+        .camera-shutter:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .camera-text-button {
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f9ff;
+          padding: 10px 16px;
+          border-radius: 14px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.92rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .camera-text-button:hover {
+          background: rgba(255, 255, 255, 0.14);
+        }
+
+        .camera-text-button.primary {
+          background: linear-gradient(180deg, #2397ff, #0c66e6);
+          border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .camera-text-button.primary:hover {
+          filter: brightness(1.08);
+        }
+
+        @media (max-width: 560px) {
+          .camera-dialog {
+            border-radius: 18px;
+          }
+
+          .camera-shutter {
+            width: 64px;
+            height: 64px;
+          }
+
+          .camera-text-button {
+            padding: 9px 12px;
+            font-size: 0.86rem;
           }
         }
       </style>
 
       <section class="shell">
-        <div class="ambient" aria-hidden="true"></div>
-
         <div class="hero">
           <article class="hero-copy">
-            <span class="eyebrow">Photo To PDF</span>
+            <span class="eyebrow">Private browser workflow</span>
             <h2 id="heading"></h2>
             <p id="subheading"></p>
+            <div class="hero-points" aria-hidden="true">
+              <span>Drag photos in</span>
+              <span>Reorder page flow</span>
+              <span>Download instantly</span>
+            </div>
           </article>
 
           <aside class="hero-metrics">
             <div class="metric">
               <span class="metric-label">Pages queued</span>
               <strong id="metricCount">0</strong>
-              <small>Each image becomes one neatly arranged PDF page.</small>
+              <small>Each image becomes one well-spaced PDF page in the final export.</small>
             </div>
 
             <div class="metric">
@@ -985,7 +1260,7 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="metric">
               <span class="metric-label">Processing mode</span>
               <strong>Browser only</strong>
-              <small>Your images stay on the page while the PDF is generated.</small>
+              <small>Your photos stay in the browser while the PDF is being prepared.</small>
             </div>
           </aside>
         </div>
@@ -995,8 +1270,8 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="panel-header">
               <div>
                 <span class="panel-label">Upload</span>
-                <h3>Upload</h3>
-                <p>Drag and drop or click to browse.</p>
+                <h3>Start your stack</h3>
+                <p>Drop photos, browse from your device, or use camera capture on supported mobile browsers.</p>
               </div>
             </div>
 
@@ -1007,37 +1282,38 @@ class PhotoPdfConverter extends HTMLElement {
                 <span></span>
                 <span>+</span>
               </div>
-              <strong>Add photos</strong>
-              <p>Drag and drop or click to browse.</p>
+              <strong>Add your photos</strong>
+              <p>Drop files anywhere here or tap a button below.</p>
               <div class="button-row">
                 <button id="pickButton" class="primary-button" type="button">Add photos</button>
-                <label id="cameraButton" class="ghost-button file-trigger">
+                <button id="cameraButton" class="ghost-button" type="button">
                   <span>Take photo</span>
-                  <input id="cameraInput" type="file" accept="image/*" capture="environment" />
-                </label>
+                </button>
+                <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
                 <button id="clearButton" class="ghost-button" type="button">Clear</button>
               </div>
               <p class="micro-copy" id="uploadSummary">No images added.</p>
             </div>
 
             <div id="status" class="status info" role="status" aria-live="polite"></div>
+            <p class="footnote">Tip: after uploading, drag cards in the queue to change page order before export.</p>
           </section>
 
           <section class="panel preview-panel">
             <div class="panel-header">
               <div>
                 <span class="panel-label">Queue</span>
-                <h3>Pages</h3>
-                <p>Select, drag, and reorder.</p>
+                <h3>Preview and arrange</h3>
+                <p>Select a photo to inspect it, then move it into the right reading order.</p>
               </div>
-              <div class="note">The first card becomes page one in your PDF.</div>
+              <div class="note">The first thumbnail becomes page one in the exported PDF.</div>
             </div>
 
             <div class="preview-stage">
               <div id="emptyPreview" class="empty-preview">
                 <div class="empty-spot" aria-hidden="true"></div>
-                <strong>Preview</strong>
-                <p>Add or select a photo.</p>
+                <strong>Preview ready</strong>
+                <p>Add or select a photo to see the current page.</p>
               </div>
 
               <img id="previewImage" class="preview-image" alt="Selected image preview" hidden />
@@ -1058,8 +1334,8 @@ class PhotoPdfConverter extends HTMLElement {
             <div class="panel-header">
               <div>
                 <span class="panel-label">Export</span>
-                <h3>Export</h3>
-                <p>Adjust the settings and download.</p>
+                <h3>Fine-tune the PDF</h3>
+                <p>Adjust layout and quality, then download a clean PDF in one click.</p>
               </div>
             </div>
 
@@ -1107,7 +1383,7 @@ class PhotoPdfConverter extends HTMLElement {
                 </div>
                 <div class="summary-row">
                   <span>Layout</span>
-                  <strong id="summaryLayout">A4 • Auto</strong>
+                  <strong id="summaryLayout">A4 / Auto</strong>
                 </div>
                 <div class="summary-row">
                   <span>Margin</span>
@@ -1122,13 +1398,35 @@ class PhotoPdfConverter extends HTMLElement {
               <button id="generateButton" class="primary-button wide" type="button">Download PDF</button>
             </div>
 
-            <p class="footnote">This single-file widget loads the PDF engine automatically when needed.</p>
+            <p class="footnote">The PDF engine loads only when you need it, keeping the page lightweight until export.</p>
           </section>
         </div>
       </section>
+
+      <div id="cameraModal" class="camera-modal" hidden role="dialog" aria-modal="true" aria-label="Take photo">
+        <div class="camera-dialog">
+          <div class="camera-header">
+            <strong>Camera</strong>
+            <span class="camera-count" id="cameraCount">0 captured</span>
+            <button type="button" class="camera-close" id="cameraCloseButton" aria-label="Close camera">&times;</button>
+          </div>
+          <div class="camera-stage" id="cameraStage">
+            <video id="cameraVideo" autoplay playsinline muted></video>
+            <div id="cameraFlash" class="camera-flash"></div>
+          </div>
+          <div id="cameraError" class="camera-error" hidden></div>
+          <div id="cameraTray" class="camera-tray"></div>
+          <div class="camera-controls">
+            <div class="left"></div>
+            <button type="button" id="cameraShutter" class="camera-shutter" aria-label="Capture photo"></button>
+            <div class="right">
+              <button type="button" id="cameraDoneButton" class="camera-text-button primary">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
   }
-
   cacheElements() {
     this.refs = {
       heading: this.shadowRoot.getElementById("heading"),
@@ -1163,6 +1461,16 @@ class PhotoPdfConverter extends HTMLElement {
       metricPage: this.shadowRoot.getElementById("metricPage"),
       metricLayout: this.shadowRoot.getElementById("metricLayout"),
       generateButton: this.shadowRoot.getElementById("generateButton"),
+      cameraModal: this.shadowRoot.getElementById("cameraModal"),
+      cameraVideo: this.shadowRoot.getElementById("cameraVideo"),
+      cameraStage: this.shadowRoot.getElementById("cameraStage"),
+      cameraFlash: this.shadowRoot.getElementById("cameraFlash"),
+      cameraError: this.shadowRoot.getElementById("cameraError"),
+      cameraTray: this.shadowRoot.getElementById("cameraTray"),
+      cameraCount: this.shadowRoot.getElementById("cameraCount"),
+      cameraShutter: this.shadowRoot.getElementById("cameraShutter"),
+      cameraDoneButton: this.shadowRoot.getElementById("cameraDoneButton"),
+      cameraCloseButton: this.shadowRoot.getElementById("cameraCloseButton"),
     };
   }
 
@@ -1187,6 +1495,22 @@ class PhotoPdfConverter extends HTMLElement {
       event.target.value = "";
       await this.handleFiles(files);
     });
+
+    this.refs.cameraButton.addEventListener("click", () => this.openCamera());
+    this.refs.cameraShutter.addEventListener("click", () => this.captureFrame());
+    this.refs.cameraDoneButton.addEventListener("click", () => this.closeCamera());
+    this.refs.cameraCloseButton.addEventListener("click", () => this.closeCamera());
+    this.refs.cameraModal.addEventListener("click", (event) => {
+      if (event.target === this.refs.cameraModal) {
+        this.closeCamera();
+      }
+    });
+    this._onCameraKeydown = (event) => {
+      if (event.key === "Escape" && !this.refs.cameraModal.hidden) {
+        this.closeCamera();
+      }
+    };
+    document.addEventListener("keydown", this._onCameraKeydown);
 
     this.refs.clearButton.addEventListener("click", () => this.clearAll());
     this.refs.generateButton.addEventListener("click", () => this.generatePdf());
@@ -1295,7 +1619,7 @@ class PhotoPdfConverter extends HTMLElement {
       this.refs.filenameInput.dataset.autoManaged = "true";
     }
 
-    this.style.setProperty("--accent", accent || "#1d75ea");
+    this.style.setProperty("--accent", accent || "#1583ff");
   }
 
   onDragEnter(event) {
@@ -1492,7 +1816,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.cameraInput.disabled = this.state.busy;
-    this.refs.cameraButton.classList.toggle("disabled", this.state.busy);
+    this.refs.cameraButton.disabled = this.state.busy;
     this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
     const cameraLabel = this.refs.cameraButton.querySelector("span");
     if (cameraLabel) {
@@ -1677,6 +2001,130 @@ class PhotoPdfConverter extends HTMLElement {
       this.render();
     }
   }
+
+  async openCamera() {
+    if (this._cameraStream) {
+      return;
+    }
+
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      this.refs.cameraInput.click();
+      return;
+    }
+
+    this._cameraTrayUrls = this._cameraTrayUrls || [];
+    this._cameraCaptureCount = 0;
+    this.refs.cameraTray.innerHTML = "";
+    this.refs.cameraCount.textContent = "0 captured";
+    this.refs.cameraError.hidden = true;
+    this.refs.cameraError.textContent = "";
+    this.refs.cameraStage.hidden = false;
+    this.refs.cameraShutter.disabled = false;
+    this.refs.cameraModal.hidden = false;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      this._cameraStream = stream;
+      this.refs.cameraVideo.srcObject = stream;
+      try {
+        await this.refs.cameraVideo.play();
+      } catch (_) {
+        /* play() may reject if autoplay is blocked; controls still work */
+      }
+    } catch (error) {
+      console.error(error);
+      this.refs.cameraStage.hidden = true;
+      this.refs.cameraShutter.disabled = true;
+      this.refs.cameraError.hidden = false;
+      const name = error && error.name;
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        this.refs.cameraError.textContent = "Camera permission was denied. Allow camera access in your browser, or use \"Add photos\" to upload from your device.";
+      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        this.refs.cameraError.textContent = "No camera was detected on this device.";
+      } else if (location.protocol === "file:") {
+        this.refs.cameraError.textContent = "Browsers block camera access on file:// pages. Open this app from a local web server (e.g., http://localhost) or hosted URL to use the camera.";
+      } else {
+        this.refs.cameraError.textContent = "Could not start the camera. " + (error?.message || "Try a different browser or device.");
+      }
+    }
+  }
+
+  async captureFrame() {
+    const video = this.refs.cameraVideo;
+    if (!this._cameraStream || !video || !video.videoWidth || !video.videoHeight) {
+      return;
+    }
+
+    if (this.refs.cameraShutter.disabled) {
+      return;
+    }
+    this.refs.cameraShutter.disabled = true;
+
+    this.refs.cameraFlash.classList.remove("fire");
+    void this.refs.cameraFlash.offsetWidth;
+    this.refs.cameraFlash.classList.add("fire");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      this.refs.cameraShutter.disabled = false;
+      return;
+    }
+
+    this._cameraCaptureCount = (this._cameraCaptureCount || 0) + 1;
+    const fileName = `camera-${Date.now()}-${this._cameraCaptureCount}.jpg`;
+    const file = new File([blob], fileName, { type: "image/jpeg", lastModified: Date.now() });
+
+    const trayUrl = URL.createObjectURL(blob);
+    this._cameraTrayUrls = this._cameraTrayUrls || [];
+    this._cameraTrayUrls.push(trayUrl);
+    const thumb = document.createElement("img");
+    thumb.src = trayUrl;
+    thumb.alt = `Capture ${this._cameraCaptureCount}`;
+    this.refs.cameraTray.appendChild(thumb);
+    thumb.scrollIntoView({ behavior: "smooth", inline: "end", block: "nearest" });
+    this.refs.cameraCount.textContent = `${this._cameraCaptureCount} captured`;
+
+    this.handleFiles([file]).finally(() => {
+      this.refs.cameraShutter.disabled = !this._cameraStream;
+    });
+  }
+
+  stopCameraStream() {
+    if (this._cameraStream) {
+      for (const track of this._cameraStream.getTracks()) {
+        try { track.stop(); } catch (_) {}
+      }
+      this._cameraStream = null;
+    }
+    if (this.refs && this.refs.cameraVideo) {
+      this.refs.cameraVideo.srcObject = null;
+    }
+  }
+
+  closeCamera() {
+    this.stopCameraStream();
+    if (this.refs && this.refs.cameraModal) {
+      this.refs.cameraModal.hidden = true;
+    }
+    if (this._cameraTrayUrls) {
+      for (const url of this._cameraTrayUrls) {
+        URL.revokeObjectURL(url);
+      }
+      this._cameraTrayUrls = [];
+    }
+    if (this.refs && this.refs.cameraTray) {
+      this.refs.cameraTray.innerHTML = "";
+    }
+  }
 }
 
 function definePhotoPdfConverter() {
@@ -1716,3 +2164,5 @@ window.PhotoPdfConverterWidget = Object.freeze({
   define: definePhotoPdfConverter,
   mount: mountPhotoPdfConverter,
 });
+
+
