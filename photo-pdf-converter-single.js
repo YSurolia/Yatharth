@@ -1186,27 +1186,46 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         .camera-shutter {
-          width: 72px;
-          height: 72px;
+          width: 84px;
+          height: 84px;
           border-radius: 999px;
           background: #fff;
-          border: 5px solid rgba(255, 255, 255, 0.35);
+          border: none;
           cursor: pointer;
-          box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
-          transition: transform 120ms ease;
+          position: relative;
+          padding: 0;
+          box-shadow:
+            0 0 0 4px transparent,
+            0 0 0 7px rgba(255, 255, 255, 0.95),
+            0 8px 24px rgba(0, 0, 0, 0.55);
+          transition:
+            transform 120ms ease,
+            box-shadow 160ms ease,
+            background-color 160ms ease;
+        }
+
+        .camera-shutter::before {
+          content: "";
+          position: absolute;
+          inset: 4px;
+          border-radius: 999px;
+          background: #fff;
+          transition: inset 120ms ease, background-color 120ms ease;
         }
 
         .camera-shutter:hover {
-          transform: scale(1.04);
+          transform: scale(1.05);
         }
 
-        .camera-shutter:active {
-          transform: scale(0.94);
+        .camera-shutter:active::before {
+          inset: 10px;
+          background: #e6e6e6;
         }
 
         .camera-shutter:disabled {
-          opacity: 0.5;
+          opacity: 0.55;
           cursor: not-allowed;
+          transform: none;
         }
 
         .camera-text-button {
@@ -1234,18 +1253,28 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         @media (max-width: 560px) {
-          .camera-dialog {
-            border-radius: 18px;
-          }
-
           .camera-shutter {
-            width: 64px;
-            height: 64px;
+            width: 76px;
+            height: 76px;
           }
 
           .camera-text-button {
-            padding: 9px 12px;
-            font-size: 0.86rem;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+          }
+
+          .camera-header {
+            padding: 14px 16px;
+          }
+
+          .camera-tray {
+            padding: 4px 12px 10px;
+            min-height: 64px;
+          }
+
+          .camera-tray img {
+            width: 52px;
+            height: 52px;
           }
         }
       </style>
