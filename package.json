@@ -1,0 +1,17 @@
+{
+  "name": "yatharth.org",
+  "version": "1.0.0",
+  "description": "Personal site for yatharth.org — logo, favicons and social share assets.",
+  "private": true,
+  "scripts": {
+    "render": "node build/render.mjs",
+    "build": "node build/render.mjs && python build/make_ico.py"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}
