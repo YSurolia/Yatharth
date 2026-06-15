@@ -1,5 +1,4 @@
 node_modules/
-dist/
-.claude/
-public/
 build/_*.png
+.DS_Store
+Thumbs.db
