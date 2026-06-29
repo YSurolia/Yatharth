@@ -162,6 +162,7 @@
     .glass-card .stamp { margin: 0 0 1rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
     .subgrid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
     @media (min-width: 480px) { .subgrid { grid-template-columns: 1fr 1fr; } }
+    .subcard-wide { grid-column: 1 / -1; }
     .subcard {
       --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
       border-radius: 0.5rem; padding: 0.75rem; position: relative; cursor: pointer; z-index: 1;
@@ -233,6 +234,39 @@
     .rank-card .num { display: block; margin-top: 0.75rem; font-size: 2.25rem; font-weight: 700; letter-spacing: -0.04em; line-height: 1; color: #fff; }
     @media (min-width: 768px) { .rank-card .num { font-size: 3rem; } }
     .rank-card .note { margin: 0.5rem 0 0; font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
+
+    /* ── Certifications ───────────────────────────────────── */
+    .certs-sub { margin: 1.5rem 0 0; max-width: 40rem; color: var(--muted); font-size: 1rem; line-height: 1.6; }
+    .certs-grid { margin-top: 2.5rem; display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+    @media (min-width: 640px) { .certs-grid { grid-template-columns: 1fr 1fr; } }
+    .cert-card { display: flex; flex-direction: column; border-radius: 1rem; overflow: hidden; transition: transform 0.25s cubic-bezier(.22, 1, .36, 1), box-shadow 0.25s ease; }
+    .cert-card.liquid-glass:hover { transform: translateY(-4px); box-shadow: 0 22px 48px rgba(34, 66, 255, 0.24); }
+    .cert-thumb-btn { position: relative; display: block; width: 100%; padding: 0; border: none; border-bottom: 1px solid var(--line); background: #0a0e1a; cursor: zoom-in; overflow: hidden; }
+    .cert-thumb { display: block; width: 100%; height: 165px; object-fit: cover; object-position: top center; transition: transform 0.45s ease; }
+    .cert-thumb-btn:hover .cert-thumb { transform: scale(1.05); }
+    .cert-zoom { position: absolute; top: 0.6rem; right: 0.6rem; width: 1.9rem; height: 1.9rem; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; background: rgba(0, 0, 0, 0.55); color: #fff; opacity: 0; transition: opacity 0.2s ease; }
+    .cert-thumb-btn:hover .cert-zoom { opacity: 1; }
+    .cert-zoom .icon { width: 1rem; height: 1rem; }
+    .cert-info { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem 1.1rem 1.15rem; }
+    .cert-body { flex: 1; min-width: 0; }
+    .cert-title { margin: 0; font-size: 0.95rem; font-weight: 600; color: #fff; line-height: 1.3; }
+    .cert-issuer { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--muted); }
+    .cert-verify { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.5rem; font-size: 0.72rem; font-weight: 600; color: #9fb4ff; text-decoration: none; }
+    .cert-verify .icon { width: 0.8rem; height: 0.8rem; }
+    .cert-verify:hover { color: #cfd8ff; }
+    .cert-year { flex-shrink: 0; font-size: 0.7rem; font-weight: 600; color: rgba(255, 255, 255, 0.6); border: 1px solid var(--line); border-radius: 9999px; padding: 0.2rem 0.6rem; white-space: nowrap; }
+    .cert-skills { margin-top: 2rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
+    .cert-skills-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.4); margin-right: 0.25rem; }
+    .chip-accent { color: #fff; border-color: rgba(34, 66, 255, 0.6); background: rgba(34, 66, 255, 0.18); }
+
+    /* Lightbox */
+    .lightbox { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 4vw; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: zoom-out; }
+    .lightbox.open { display: flex; animation: lbfade 0.25s ease; }
+    @keyframes lbfade { from { opacity: 0; } to { opacity: 1; } }
+    .lightbox-img { max-width: 92vw; max-height: 88vh; border-radius: 10px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); animation: lbzoom 0.3s cubic-bezier(.22, 1, .36, 1); }
+    @keyframes lbzoom { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .lightbox-close { position: absolute; top: 1.25rem; right: 1.5rem; width: 2.75rem; height: 2.75rem; border-radius: 9999px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+    .lightbox-close:hover { background: rgba(255, 255, 255, 0.16); }
 
     /* ── Final CTA ────────────────────────────────────────── */
     .cta-card { position: relative; overflow: hidden; border-radius: 1.5rem; padding: 4rem 2rem; text-align: center; }
@@ -328,6 +362,8 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
     <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0z"/></symbol>
+    <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
   </svg>
 
   <!-- Noise filter (used by shiny headline + watermark) -->
@@ -358,8 +394,8 @@
       <div class="nav-links" id="navLinks">
         <a href="https://yatharth.org/games">Games</a>
         <a href="#modules">Tools</a>
-        <a href="https://yatharth.org/warfront-client">Warfront</a>
         <a href="#about">About</a>
+        <a href="#certifications">Certifications</a>
         <a href="mailto:yatharth.surolia@gmail.com">Contact</a>
       </div>
       <a class="btn-pill" href="https://yatharth.org/games">Play Games <svg class="icon icon-chev"><use href="#i-chevron"/></svg></a>
@@ -390,7 +426,6 @@
           <b>Yatharth.org</b>
           <span>Games</span>
           <span>Tools</span>
-          <span class="hide-sm">Warfront</span>
           <span class="hide-md">About</span>
           <span class="hide-md">Help</span>
         </div>
@@ -428,11 +463,14 @@
               <a class="it" href="https://yatharth.org/pdf"><p class="a">Create PDF</p><p class="b">yatharth.org/pdf</p></a>
             </div>
             <div class="subcard liquid-glass">
-              <div class="top"><span class="lbl"><span class="d" style="background:#9fb4ff"></span>Optimize</span><span class="ct">2</span></div>
+              <div class="top"><span class="lbl"><span class="d" style="background:#9fb4ff"></span>Analyze</span><span class="ct">1</span></div>
               <a class="it" href="https://yatharth.org/pc-analyzer"><p class="a">PC Analyzer</p><p class="b">yatharth.org/pc-analyzer</p></a>
-              <a class="it" href="https://www.yatharth.org/game-booster"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></a>
             </div>
             <div class="subcard liquid-glass">
+              <div class="top"><span class="lbl"><span class="d" style="background:#7e93ff"></span>Boost</span><span class="ct">1</span></div>
+              <a class="it" href="https://www.yatharth.org/game-booster"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></a>
+            </div>
+            <div class="subcard subcard-wide liquid-glass">
               <div class="top"><span class="lbl"><span class="d" style="background:#5a6cff"></span>Download</span><span class="ct">1</span></div>
               <a class="it" href="https://yatharth.org/warfront-client"><p class="a">Warfront Client</p><p class="b">yatharth.org/warfront-client</p></a>
             </div>
@@ -550,6 +588,76 @@
       </div>
     </section>
 
+    <!-- Certifications -->
+    <section class="section" id="certifications">
+      <div class="eyebrow reveal"><span class="d"></span><span class="label">Certifications</span><span class="tag">Verified</span></div>
+      <h2 class="big reveal">Credentials &amp; skills.</h2>
+      <p class="certs-sub reveal">Certified and always building — here's what I've earned, plus the languages and tools I work with.</p>
+      <div class="certs-grid reveal">
+        <div class="cert-card liquid-glass">
+          <button class="cert-thumb-btn" data-full="certs/aws-cloud-practitioner.svg" aria-label="Enlarge AWS Cloud Practitioner Essentials certificate">
+            <img class="cert-thumb" src="certs/aws-cloud-practitioner.svg" alt="AWS Cloud Practitioner Essentials certificate" loading="lazy"/>
+            <span class="cert-zoom"><svg class="icon"><use href="#i-expand"/></svg></span>
+          </button>
+          <div class="cert-info">
+            <div class="cert-body">
+              <p class="cert-title">AWS Cloud Practitioner Essentials</p>
+              <p class="cert-issuer">Amazon Web Services (AWS)</p>
+            </div>
+            <span class="cert-year">Jun 2026</span>
+          </div>
+        </div>
+        <div class="cert-card liquid-glass">
+          <button class="cert-thumb-btn" data-full="certs/claude-platform-101.svg" aria-label="Enlarge Claude Platform 101 certificate">
+            <img class="cert-thumb" src="certs/claude-platform-101.svg" alt="Claude Platform 101 certificate" loading="lazy"/>
+            <span class="cert-zoom"><svg class="icon"><use href="#i-expand"/></svg></span>
+          </button>
+          <div class="cert-info">
+            <div class="cert-body">
+              <p class="cert-title">Claude Platform 101</p>
+              <p class="cert-issuer">Anthropic</p>
+              <a class="cert-verify" href="https://verify.skilljar.com/c/3czoj4cp3i3k" target="_blank" rel="noopener">Verify credential <svg class="icon"><use href="#i-external"/></svg></a>
+            </div>
+            <span class="cert-year">Jun 2026</span>
+          </div>
+        </div>
+        <div class="cert-card liquid-glass">
+          <button class="cert-thumb-btn" data-full="certs/claude-code-101.svg" aria-label="Enlarge Claude Code 101 certificate">
+            <img class="cert-thumb" src="certs/claude-code-101.svg" alt="Claude Code 101 certificate" loading="lazy"/>
+            <span class="cert-zoom"><svg class="icon"><use href="#i-expand"/></svg></span>
+          </button>
+          <div class="cert-info">
+            <div class="cert-body">
+              <p class="cert-title">Claude Code 101</p>
+              <p class="cert-issuer">Anthropic</p>
+              <a class="cert-verify" href="https://verify.skilljar.com/c/8ajyoris9f2v" target="_blank" rel="noopener">Verify credential <svg class="icon"><use href="#i-external"/></svg></a>
+            </div>
+            <span class="cert-year">Jun 2026</span>
+          </div>
+        </div>
+        <div class="cert-card liquid-glass">
+          <button class="cert-thumb-btn" data-full="certs/claude-101.svg" aria-label="Enlarge Claude 101 certificate">
+            <img class="cert-thumb" src="certs/claude-101.svg" alt="Claude 101 certificate" loading="lazy"/>
+            <span class="cert-zoom"><svg class="icon"><use href="#i-expand"/></svg></span>
+          </button>
+          <div class="cert-info">
+            <div class="cert-body">
+              <p class="cert-title">Claude 101</p>
+              <p class="cert-issuer">Anthropic</p>
+              <a class="cert-verify" href="https://verify.skilljar.com/c/52o6hhgqneec" target="_blank" rel="noopener">Verify credential <svg class="icon"><use href="#i-external"/></svg></a>
+            </div>
+            <span class="cert-year">Jun 2026</span>
+          </div>
+        </div>
+      </div>
+      <div class="cert-skills reveal">
+        <span class="cert-skills-label">Skills</span>
+        <span class="chip">C</span>
+        <span class="chip">C++</span>
+        <span class="chip chip-accent">Builds anything with AI</span>
+      </div>
+    </section>
+
     <!-- Final CTA -->
     <section class="section">
       <div class="cta-card liquid-glass reveal">
@@ -568,6 +676,12 @@
         <span>Yatharth.org &middot; Warfront Studios</span>
       </footer>
     </section>
+  </div>
+
+  <!-- Lightbox for enlarging certificates -->
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="Certificate" />
   </div>
 
   <script>
@@ -623,6 +737,36 @@
           card.style.setProperty('--mx', '50%');
           card.style.setProperty('--my', '50%');
         });
+      });
+    }
+
+    // Certificate lightbox (click thumbnail to enlarge)
+    var lightbox = document.getElementById('lightbox');
+    var lightboxImg = document.getElementById('lightboxImg');
+    var lightboxClose = document.getElementById('lightboxClose');
+    function openLightbox(src, alt) {
+      lightboxImg.src = src;
+      lightboxImg.alt = alt || 'Certificate';
+      lightbox.classList.add('open');
+      lightbox.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      lightboxImg.src = '';
+    }
+    document.querySelectorAll('.cert-thumb-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var img = btn.querySelector('img');
+        openLightbox(btn.getAttribute('data-full'), img ? img.alt : 'Certificate');
+      });
+    });
+    if (lightbox) {
+      lightbox.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeLightbox();
       });
     }
   </script>
