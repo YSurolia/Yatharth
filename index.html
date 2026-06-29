@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#2242ff" />
 
   <!-- Favicon (inline, no extra file needed) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' rx='48' fill='%230c0c0c'/><path fill='%232242ff' d='M 24 152 C 70.692 152 104 185.308 104 232 L 64 232 C 64 208.654 47.346 192 24 192 Z M 232 192 C 208.654 192 192 208.654 192 232 L 152 232 C 152 185.308 185.308 152 232 152 Z M 152 24 C 152 70.692 118.692 104 72 104 L 72 64 C 95.346 64 112 47.346 112 24 Z M 192 24 C 192 47.346 208.654 64 232 64 L 232 104 C 185.308 104 152 70.692 152 24 Z'/></svg>" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' rx='56' fill='%232242ff'/><g transform='translate(50 50) scale(0.609)'><path fill='%23ffffff' d='M 0 128 C 70.692 128 128 185.308 128 256 L 64 256 C 64 220.654 35.346 192 0 192 Z M 256 192 C 220.654 192 192 220.654 192 256 L 128 256 C 128 185.308 185.308 128 256 128 Z M 128 0 C 128 70.692 70.692 128 0 128 L 0 64 C 35.346 64 64 35.346 64 0 Z M 192 0 C 192 35.346 220.654 64 256 64 L 256 128 C 185.308 128 128 70.692 128 0 Z'/></g></svg>" />
 
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website" />
@@ -140,76 +140,6 @@
     @media (max-width: 640px) { .hide-sm { display: none; } }
     @media (max-width: 768px) { .hide-md { display: none; } }
 
-    /* ── Console mockup ───────────────────────────────────── */
-    .console-wrap { max-width: var(--container); margin: 0 auto; padding: 4rem 1.5rem; }
-    @media (min-width: 768px) { .console-wrap { padding: 6rem 1.5rem; } }
-    .console { border: 1px solid var(--line); border-radius: 1rem; overflow: hidden; background: rgba(14, 16, 20, 0.9); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); }
-    .console .titlebar { display: flex; align-items: center; padding: 0 1rem; height: 2.5rem; border-bottom: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); }
-    .dots { display: flex; gap: 0.5rem; }
-    .dots span { width: 0.75rem; height: 0.75rem; border-radius: 50%; }
-    .console .titlebar .title { flex: 1; text-align: center; font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
-    .console .titlebar .spacer { width: 3rem; }
-    .console-body { display: grid; grid-template-columns: 3fr 4fr 5fr; height: 520px; }
-
-    .sidebar { border-right: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-    .compose { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.5rem; background: #fff; color: #000; font-size: 0.75rem; font-weight: 600; padding: 0.5rem 0.75rem; text-decoration: none; }
-    .compose .icon { width: 0.875rem; height: 0.875rem; }
-    .nav-list { display: flex; flex-direction: column; gap: 0.25rem; }
-    .nav-item { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.625rem; border-radius: 0.375rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); }
-    .nav-item.active { background: rgba(255, 255, 255, 0.1); color: #fff; }
-    .nav-item .icon { width: 0.875rem; height: 0.875rem; }
-    .nav-item .count { margin-left: auto; font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); }
-    .side-title { padding: 0 0.625rem; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.4); margin: 0.5rem 0; }
-    .profile { display: flex; align-items: center; gap: 0.625rem; padding: 0.375rem 0.625rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); }
-    .profile span.d { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
-
-    .list { border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
-    .list .search { display: flex; align-items: center; gap: 0.5rem; padding: 0 1rem; height: 3rem; border-bottom: 1px solid var(--line); color: rgba(255, 255, 255, 0.4); font-size: 0.75rem; }
-    .list .search .icon { width: 0.875rem; height: 0.875rem; }
-    .list .items { overflow-y: auto; }
-    .msg { display: block; padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); text-decoration: none; transition: background 0.15s ease; }
-    .msg:hover { background: rgba(255, 255, 255, 0.03); }
-    .msg.active { background: rgba(255, 255, 255, 0.06); }
-    .msg .row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-    .msg .name { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.8); }
-    .msg.unread .name { font-weight: 600; color: #fff; }
-    .msg .name .d { display: inline-block; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--brand); margin-right: 0.375rem; vertical-align: middle; }
-    .msg .time { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); }
-    .msg .tag { margin: 0.25rem 0 0; font-size: 0.6875rem; font-weight: 500; color: rgba(255, 255, 255, 0.7); }
-    .msg .preview { margin: 0; font-size: 0.6875rem; color: rgba(255, 255, 255, 0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .reader { display: flex; flex-direction: column; overflow: hidden; }
-    .reader .toolbar { display: flex; align-items: center; gap: 0.25rem; padding: 0 1rem; height: 3rem; border-bottom: 1px solid var(--line); }
-    .reader .toolbar button { width: 1.75rem; height: 1.75rem; border-radius: 0.375rem; color: rgba(255, 255, 255, 0.6); background: none; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-    .reader .toolbar button:hover { background: rgba(255, 255, 255, 0.05); }
-    .reader .toolbar button .icon { width: 0.875rem; height: 0.875rem; }
-    .reader .toolbar .push { margin-left: auto; }
-    .reader .rbody { overflow-y: auto; padding: 1.25rem; }
-    .reader h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
-    .sender { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.75rem; }
-    .avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; background: linear-gradient(135deg, #2242ff, #0a1024); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: #fff; }
-    .sender .who { flex: 1; }
-    .sender .who p { margin: 0; }
-    .sender .who .n { font-size: 0.75rem; color: #fff; }
-    .sender .who .m { font-size: 0.6875rem; color: rgba(255, 255, 255, 0.4); }
-    .pill-sm { font-size: 0.625rem; padding: 0.125rem 0.5rem; border-radius: 9999px; border: 1px solid var(--line); color: rgba(255, 255, 255, 0.6); }
-    .summary { margin-top: 1.25rem; border-radius: 0.5rem; padding: 0.75rem; }
-    .summary .head { display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.375rem; }
-    .summary .head .icon { width: 0.875rem; height: 0.875rem; color: #9fb4ff; }
-    .summary .head span { font-size: 0.6875rem; font-weight: 500; color: rgba(255, 255, 255, 0.8); }
-    .summary p { margin: 0; font-size: 0.6875rem; color: rgba(255, 255, 255, 0.6); line-height: 1.5; }
-    .reader-text p { margin: 0.75rem 0 0; font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); line-height: 1.6; }
-    .reader-text p.sig { color: rgba(255, 255, 255, 0.5); }
-    .attach { margin-top: 1.25rem; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); font-size: 0.6875rem; color: rgba(255, 255, 255, 0.7); text-decoration: none; }
-    .attach .icon { width: 0.875rem; height: 0.875rem; }
-    .attach:hover { background: rgba(255, 255, 255, 0.06); }
-
-    @media (max-width: 700px) {
-      .console-body { grid-template-columns: 1fr; height: auto; }
-      .sidebar { display: none; }
-      .list { border-right: none; border-bottom: 1px solid var(--line); max-height: 300px; }
-    }
-
     /* ── Section helpers ──────────────────────────────────── */
     .section { max-width: var(--container); margin: 0 auto; padding: 5rem 1.5rem; }
     @media (min-width: 768px) { .section { padding: 7rem 1.5rem; } }
@@ -225,19 +155,43 @@
     @media (min-width: 768px) { .modules-grid { grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; } }
     .modules-grid p.lead { margin: 1.5rem 0 0; color: var(--muted); font-size: 1rem; line-height: 1.6; max-width: 28rem; }
     .chips { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.75rem; }
-    .chip { font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); padding: 0.375rem 0.75rem; border-radius: 9999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+    .chip { font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); padding: 0.375rem 0.75rem; border-radius: 9999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); text-decoration: none; transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; will-change: transform; }
+    .chip:hover { color: #fff; border-color: rgba(34, 66, 255, 0.7); background: rgba(34, 66, 255, 0.14); transform: translateY(-3px) scale(1.08) rotate(-1.5deg); box-shadow: 0 10px 24px rgba(34, 66, 255, 0.3); }
     .glass-card { border-radius: 1rem; padding: 1.25rem; }
+    .glass-card.liquid-glass { overflow: visible; }
     .glass-card .stamp { margin: 0 0 1rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
     .subgrid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
     @media (min-width: 480px) { .subgrid { grid-template-columns: 1fr 1fr; } }
-    .subcard { border-radius: 0.5rem; padding: 0.75rem; }
+    .subcard {
+      --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
+      border-radius: 0.5rem; padding: 0.75rem; position: relative; cursor: pointer; z-index: 1;
+      transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry));
+      transform-style: preserve-3d;
+      transition: transform 0.3s cubic-bezier(.22, 1, .36, 1), box-shadow 0.3s ease;
+    }
+    .subcard::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+      background: radial-gradient(160px circle at var(--mx) var(--my), rgba(34, 66, 255, 0.4), transparent 60%);
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .subcard:hover {
+      transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) translateZ(24px) scale(1.05);
+      box-shadow: 0 26px 56px rgba(34, 66, 255, 0.32), 0 0 0 1px rgba(34, 66, 255, 0.45);
+      z-index: 3;
+    }
+    .subcard:hover::after { opacity: 1; }
+    .subcard .top, .subcard .it { position: relative; z-index: 1; }
     .subcard .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.625rem; }
     .subcard .top .lbl { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 500; color: #fff; }
     .subcard .top .lbl .d { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
     .subcard .top .ct { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); }
-    .subcard .it { margin: 0 0 0.375rem; }
-    .subcard .it .a { font-size: 0.6875rem; color: rgba(255, 255, 255, 0.8); }
-    .subcard .it .b { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); }
+    .subcard .it { display: block; margin: 0 0 0.375rem; padding-right: 0.9rem; text-decoration: none; border-radius: 0.375rem; }
+    .subcard a.it::after { content: '\2197'; position: absolute; top: 0.05rem; right: 0; font-size: 0.75rem; color: #9fb4ff; opacity: 0; transform: translate(-4px, 2px); transition: all 0.25s cubic-bezier(.22, 1, .36, 1); }
+    .subcard a.it:hover::after { opacity: 1; transform: translate(0, 0); }
+    .subcard .it .a { font-size: 0.6875rem; color: rgba(255, 255, 255, 0.8); transition: color 0.15s ease; }
+    .subcard .it .b { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); transition: color 0.15s ease; }
+    .subcard a.it:hover .a { color: #fff; }
+    .subcard a.it:hover .b { color: rgba(255, 255, 255, 0.65); }
 
     /* ── Presence ─────────────────────────────────────────── */
     .presence .kicker { text-align: center; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255, 255, 255, 0.4); margin: 0; }
@@ -447,98 +401,6 @@
       </div>
     </div>
 
-    <!-- Console mockup -->
-    <div class="console-wrap">
-      <div class="console liquid-glass reveal">
-        <div class="titlebar">
-          <div class="dots">
-            <span style="background:#ff5f57"></span>
-            <span style="background:#febc2e"></span>
-            <span style="background:#28c840"></span>
-          </div>
-          <span class="title">Yatharth.org — Console</span>
-          <span class="spacer"></span>
-        </div>
-        <div class="console-body">
-          <!-- Sidebar -->
-          <div class="sidebar">
-            <a class="compose" href="https://yatharth.org/warfront-client"><svg class="icon"><use href="#i-sparkles"/></svg> Launch Warfront</a>
-            <div class="nav-list">
-              <div class="nav-item active"><svg class="icon"><use href="#i-gamepad"/></svg><span>Play Games</span><span class="count">5</span></div>
-              <div class="nav-item"><svg class="icon"><use href="#i-file"/></svg><span>Create PDF</span></div>
-              <div class="nav-item"><svg class="icon"><use href="#i-cpu"/></svg><span>PC Analyzer</span></div>
-              <div class="nav-item"><svg class="icon"><use href="#i-gauge"/></svg><span>Game Booster</span></div>
-              <div class="nav-item"><svg class="icon"><use href="#i-download"/></svg><span>Warfront Client</span><span class="count">new</span></div>
-            </div>
-            <div>
-              <p class="side-title">Profiles</p>
-              <div class="profile"><span class="d" style="background:#2242ff"></span>Games</div>
-              <div class="profile"><span class="d" style="background:#9fb4ff"></span>Tools</div>
-              <div class="profile"><span class="d" style="background:#f59e0b"></span>Studio</div>
-              <div class="profile"><span class="d" style="background:#10b981"></span>Tennis</div>
-            </div>
-          </div>
-
-          <!-- Module list -->
-          <div class="list">
-            <div class="search"><svg class="icon"><use href="#i-search"/></svg> Search modules</div>
-            <div class="items">
-              <a class="msg unread active" href="https://yatharth.org/games">
-                <div class="row"><span class="name"><span class="d"></span>Play Games</span><span class="time">Live</span></div>
-                <p class="tag">Games</p><p class="preview">Jump into the gaming section in one click.</p>
-              </a>
-              <a class="msg unread" href="https://yatharth.org/pdf">
-                <div class="row"><span class="name"><span class="d"></span>Create PDF</span><span class="time">Live</span></div>
-                <p class="tag">Documents</p><p class="preview">Build documents without extra navigation.</p>
-              </a>
-              <a class="msg" href="https://yatharth.org/pc-analyzer">
-                <div class="row"><span class="name">PC Analyzer</span><span class="time">Live</span></div>
-                <p class="tag">System</p><p class="preview">Diagnostics, hardware details, and system status.</p>
-              </a>
-              <a class="msg" href="https://www.yatharth.org/game-booster">
-                <div class="row"><span class="name">Game Booster</span><span class="time">Live</span></div>
-                <p class="tag">Performance</p><p class="preview">Launch the booster for smoother gameplay.</p>
-              </a>
-              <a class="msg" href="https://yatharth.org/warfront-client">
-                <div class="row"><span class="name">Warfront Client</span><span class="time">Build</span></div>
-                <p class="tag">Download</p><p class="preview">Access the Warfront desktop experience.</p>
-              </a>
-            </div>
-          </div>
-
-          <!-- Reader -->
-          <div class="reader">
-            <div class="toolbar">
-              <button aria-label="Open"><svg class="icon"><use href="#i-external"/></svg></button>
-              <button aria-label="Share"><svg class="icon"><use href="#i-share"/></svg></button>
-              <button aria-label="Star"><svg class="icon"><use href="#i-star"/></svg></button>
-              <button class="push" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
-            </div>
-            <div class="rbody">
-              <h3>Warfront Client</h3>
-              <div class="sender">
-                <div class="avatar">W</div>
-                <div class="who"><p class="n">Warfront Studios</p><p class="m">to you &middot; Download</p></div>
-                <span class="pill-sm">Download</span>
-              </div>
-              <div class="summary liquid-glass">
-                <div class="head"><svg class="icon"><use href="#i-sparkles"/></svg><span>Overview by Yatharth</span></div>
-                <p>The Warfront desktop client bundles the games, booster, and tools into one fast install. Built by Warfront Studios. One download, no clutter.</p>
-              </div>
-              <div class="reader-text">
-                <p>Hey,</p>
-                <p>The Warfront Client is the desktop home for everything on yatharth.org — games, the PC analyzer, and the game booster, all in a single app.</p>
-                <p>Launch a game, tune your system, or check the latest build without opening a browser tab. Updates roll out automatically as new features ship.</p>
-                <p>Tell me what you want next and I'll put it on the roadmap.</p>
-                <p class="sig">— Yatharth, Warfront Studios</p>
-              </div>
-              <a class="attach" href="https://yatharth.org/warfront-client"><svg class="icon"><use href="#i-paperclip"/></svg> warfront-client-setup.exe</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modules -->
     <section class="section" id="modules">
       <div class="modules-grid">
@@ -547,11 +409,11 @@
           <h2 class="big">Everything I make,<br>in a single click.</h2>
           <p class="lead">Games, tools, and the Warfront client — all reachable from one fast homepage. No menus to dig through. Pick a destination and you are there.</p>
           <div class="chips">
-            <span class="chip">Games</span>
-            <span class="chip">PDF tools</span>
-            <span class="chip">PC Analyzer</span>
-            <span class="chip">Game Booster</span>
-            <span class="chip">Warfront Client</span>
+            <a class="chip" href="https://yatharth.org/games">Games</a>
+            <a class="chip" href="https://yatharth.org/pdf">PDF tools</a>
+            <a class="chip" href="https://yatharth.org/pc-analyzer">PC Analyzer</a>
+            <a class="chip" href="https://www.yatharth.org/game-booster">Game Booster</a>
+            <a class="chip" href="https://yatharth.org/warfront-client">Warfront Client</a>
           </div>
         </div>
         <div class="glass-card liquid-glass reveal">
@@ -559,20 +421,20 @@
           <div class="subgrid">
             <div class="subcard liquid-glass">
               <div class="top"><span class="lbl"><span class="d" style="background:#ffffff"></span>Play</span><span class="ct">1</span></div>
-              <div class="it"><p class="a">Play Games</p><p class="b">yatharth.org/games</p></div>
+              <a class="it" href="https://yatharth.org/games"><p class="a">Play Games</p><p class="b">yatharth.org/games</p></a>
             </div>
             <div class="subcard liquid-glass">
               <div class="top"><span class="lbl"><span class="d" style="background:#cfd6ff"></span>Create</span><span class="ct">1</span></div>
-              <div class="it"><p class="a">Create PDF</p><p class="b">yatharth.org/pdf</p></div>
+              <a class="it" href="https://yatharth.org/pdf"><p class="a">Create PDF</p><p class="b">yatharth.org/pdf</p></a>
             </div>
             <div class="subcard liquid-glass">
               <div class="top"><span class="lbl"><span class="d" style="background:#9fb4ff"></span>Optimize</span><span class="ct">2</span></div>
-              <div class="it"><p class="a">PC Analyzer</p><p class="b">yatharth.org/pc-analyzer</p></div>
-              <div class="it"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></div>
+              <a class="it" href="https://yatharth.org/pc-analyzer"><p class="a">PC Analyzer</p><p class="b">yatharth.org/pc-analyzer</p></a>
+              <a class="it" href="https://www.yatharth.org/game-booster"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></a>
             </div>
             <div class="subcard liquid-glass">
               <div class="top"><span class="lbl"><span class="d" style="background:#5a6cff"></span>Download</span><span class="ct">1</span></div>
-              <div class="it"><p class="a">Warfront Client</p><p class="b">yatharth.org/warfront-client</p></div>
+              <a class="it" href="https://yatharth.org/warfront-client"><p class="a">Warfront Client</p><p class="b">yatharth.org/warfront-client</p></a>
             </div>
           </div>
         </div>
@@ -741,6 +603,27 @@
       document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
     } else {
       document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in-view'); });
+    }
+
+    // Cursor-tracking 3D tilt + glow on module cards
+    if (!reduce) {
+      document.querySelectorAll('.subcard').forEach(function (card) {
+        card.addEventListener('pointermove', function (e) {
+          var r = card.getBoundingClientRect();
+          var px = (e.clientX - r.left) / r.width;
+          var py = (e.clientY - r.top) / r.height;
+          card.style.setProperty('--ry', ((px - 0.5) * 18).toFixed(2) + 'deg');
+          card.style.setProperty('--rx', ((0.5 - py) * 18).toFixed(2) + 'deg');
+          card.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+          card.style.setProperty('--my', (py * 100).toFixed(1) + '%');
+        });
+        card.addEventListener('pointerleave', function () {
+          card.style.setProperty('--ry', '0deg');
+          card.style.setProperty('--rx', '0deg');
+          card.style.setProperty('--mx', '50%');
+          card.style.setProperty('--my', '50%');
+        });
+      });
     }
   </script>
 </body>
