@@ -153,7 +153,7 @@
     .subcard-wide { grid-column: 1 / -1; }
     .subcard {
       --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
-      border-radius: 0.5rem; padding: 0.75rem; position: relative; cursor: pointer; z-index: 1;
+      display: block; text-decoration: none; color: inherit; border-radius: 0.5rem; padding: 0.75rem; position: relative; cursor: pointer; z-index: 1;
       transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry));
       transform-style: preserve-3d;
       transition: transform 0.3s cubic-bezier(.22, 1, .36, 1), box-shadow 0.3s ease;
@@ -175,12 +175,12 @@
     .subcard .top .lbl .d { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
     .subcard .top .ct { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); }
     .subcard .it { display: block; margin: 0 0 0.375rem; padding-right: 0.9rem; text-decoration: none; border-radius: 0.375rem; }
-    .subcard a.it::after { content: '\2197'; position: absolute; top: 0.05rem; right: 0; font-size: 0.75rem; color: #9fb4ff; opacity: 0; transform: translate(-4px, 2px); transition: all 0.25s cubic-bezier(.22, 1, .36, 1); }
-    .subcard a.it:hover::after { opacity: 1; transform: translate(0, 0); }
+    .subcard .it::after { content: '\2197'; position: absolute; top: 0.05rem; right: 0; font-size: 0.75rem; color: #9fb4ff; opacity: 0; transform: translate(-4px, 2px); transition: all 0.25s cubic-bezier(.22, 1, .36, 1); }
+    .subcard:hover .it::after { opacity: 1; transform: translate(0, 0); }
     .subcard .it .a { font-size: 0.6875rem; color: rgba(255, 255, 255, 0.8); transition: color 0.15s ease; }
     .subcard .it .b { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); transition: color 0.15s ease; }
-    .subcard a.it:hover .a { color: #fff; }
-    .subcard a.it:hover .b { color: rgba(255, 255, 255, 0.65); }
+    .subcard:hover .it .a { color: #fff; }
+    .subcard:hover .it .b { color: rgba(255, 255, 255, 0.65); }
 
     /* ── Presence ─────────────────────────────────────────── */
     .presence .kicker { text-align: center; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255, 255, 255, 0.4); margin: 0; }
@@ -424,26 +424,26 @@
         <div class="glass-card liquid-glass reveal">
           <p class="stamp">Today &middot; 5 modules live</p>
           <div class="subgrid">
-            <div class="subcard liquid-glass">
+            <a class="subcard liquid-glass" href="https://yatharth.org/games">
               <div class="top"><span class="lbl"><span class="d" style="background:#ffffff"></span>Play</span><span class="ct">1</span></div>
-              <a class="it" href="https://yatharth.org/games"><p class="a">Play Games</p><p class="b">yatharth.org/games</p></a>
-            </div>
-            <div class="subcard liquid-glass">
+              <div class="it"><p class="a">Play Games</p><p class="b">yatharth.org/games</p></div>
+            </a>
+            <a class="subcard liquid-glass" href="https://yatharth.org/pdf">
               <div class="top"><span class="lbl"><span class="d" style="background:#cfd6ff"></span>Create</span><span class="ct">1</span></div>
-              <a class="it" href="https://yatharth.org/pdf"><p class="a">Create PDF</p><p class="b">yatharth.org/pdf</p></a>
-            </div>
-            <div class="subcard liquid-glass">
+              <div class="it"><p class="a">Create PDF</p><p class="b">yatharth.org/pdf</p></div>
+            </a>
+            <a class="subcard liquid-glass" href="https://yatharth.org/pc-analyzer">
               <div class="top"><span class="lbl"><span class="d" style="background:#9fb4ff"></span>Analyze</span><span class="ct">1</span></div>
-              <a class="it" href="https://yatharth.org/pc-analyzer"><p class="a">PC Analyzer</p><p class="b">yatharth.org/pc-analyzer</p></a>
-            </div>
-            <div class="subcard liquid-glass">
+              <div class="it"><p class="a">PC Analyzer</p><p class="b">yatharth.org/pc-analyzer</p></div>
+            </a>
+            <a class="subcard liquid-glass" href="https://www.yatharth.org/game-booster">
               <div class="top"><span class="lbl"><span class="d" style="background:#7e93ff"></span>Boost</span><span class="ct">1</span></div>
-              <a class="it" href="https://www.yatharth.org/game-booster"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></a>
-            </div>
-            <div class="subcard subcard-wide liquid-glass">
+              <div class="it"><p class="a">Game Booster</p><p class="b">www.yatharth.org/game-booster</p></div>
+            </a>
+            <a class="subcard subcard-wide liquid-glass" href="https://yatharth.org/warfront-client">
               <div class="top"><span class="lbl"><span class="d" style="background:#5a6cff"></span>Download</span><span class="ct">1</span></div>
-              <a class="it" href="https://yatharth.org/warfront-client"><p class="a">Warfront Client</p><p class="b">yatharth.org/warfront-client</p></a>
-            </div>
+              <div class="it"><p class="a">Warfront Client</p><p class="b">yatharth.org/warfront-client</p></div>
+            </a>
           </div>
         </div>
       </div>
