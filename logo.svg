@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="760" height="200" role="img" aria-label="Yatharth — Affordable Web Developer">
+  <rect x="30" y="30" width="140" height="140" rx="30.6" fill="#2242ff"/>
+  <g transform="translate(57.34 57.34) scale(0.3331)">
+    <path fill="#ffffff" d="M 0 128 C 70.692 128 128 185.308 128 256 L 64 256 C 64 220.654 35.346 192 0 192 Z M 256 192 C 220.654 192 192 220.654 192 256 L 128 256 C 128 185.308 185.308 128 256 128 Z M 128 0 C 128 70.692 70.692 128 0 128 L 0 64 C 35.346 64 64 35.346 64 0 Z M 192 0 C 192 35.346 220.654 64 256 64 L 256 128 C 185.308 128 128 70.692 128 0 Z"/>
+  </g>
+  <text x="208" y="112" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="-1" fill="#ffffff">Yatharth</text>
+  <text x="212" y="154" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="500" letter-spacing="6" fill="#9fb4ff">AFFORDABLE WEB DEVELOPER</text>
+</svg>

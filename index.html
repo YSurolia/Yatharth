@@ -12,8 +12,11 @@
   <meta name="geo.placename" content="Jaipur, Rajasthan, India" />
   <meta name="theme-color" content="#2242ff" />
 
-  <!-- Favicon (inline, no extra file needed) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' rx='56' fill='%232242ff'/><g transform='translate(50 50) scale(0.609)'><path fill='%23ffffff' d='M 0 128 C 70.692 128 128 185.308 128 256 L 64 256 C 64 220.654 35.346 192 0 192 Z M 256 192 C 220.654 192 192 220.654 192 256 L 128 256 C 128 185.308 185.308 128 256 128 Z M 128 0 C 128 70.692 70.692 128 0 128 L 0 64 C 35.346 64 64 35.346 64 0 Z M 192 0 C 192 35.346 220.654 64 256 64 L 256 128 C 185.308 128 128 70.692 128 0 Z'/></g></svg>" />
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico" sizes="48x48" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website" />
@@ -223,6 +226,10 @@
     /* ── Navbar ───────────────────────────────────────────── */
     .nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0; }
     .nav .logo { width: 2rem; height: 2rem; color: #fff; }
+    .brand { display: flex; align-items: center; gap: 0.625rem; text-decoration: none; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .brand-text .t { font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+    .brand-text .s { font-size: 0.5rem; font-weight: 600; letter-spacing: 0.17em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); white-space: nowrap; }
     .nav-links { display: flex; gap: 2rem; }
     .nav-links a { color: rgba(255, 255, 255, 0.7); font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: color 0.2s ease; }
     .nav-links a:hover { color: #fff; }
@@ -523,7 +530,10 @@
   <div class="content">
     <!-- Navbar -->
     <nav class="container nav fade-up" style="animation-delay:0s">
-      <a href="#top" aria-label="Yatharth.org home"><svg class="icon icon-fill logo"><use href="#i-logo"/></svg></a>
+      <a href="#top" class="brand" aria-label="Yatharth.org home">
+        <svg class="icon icon-fill logo"><use href="#i-logo"/></svg>
+        <span class="brand-text"><span class="t">Yatharth</span><span class="s">Affordable Web Developer</span></span>
+      </a>
       <div class="nav-links" id="navLinks">
         <a href="#services">Services</a>
         <a href="https://yatharth.org/games">Games</a>
