@@ -110,6 +110,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.state = {
       items: [],
       activeId: null,
+      scanEnabled: false,
       busy: false,
       statusTone: "info",
       statusMessage: "Add photos to start.",
@@ -139,6 +140,7 @@ class PhotoPdfConverter extends HTMLElement {
   disconnectedCallback() {
     for (const item of this.state.items) {
       URL.revokeObjectURL(item.objectUrl);
+      if (item.scanObjectUrl) URL.revokeObjectURL(item.scanObjectUrl);
     }
     this.stopCameraStream();
     if (this._onCameraKeydown) {
@@ -868,6 +870,42 @@ class PhotoPdfConverter extends HTMLElement {
           accent-color: var(--accent);
         }
 
+        .scan-option {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 15px 16px;
+          border: 1px solid rgba(21, 131, 255, 0.2);
+          border-radius: 18px;
+          background: linear-gradient(180deg, rgba(239, 247, 255, 0.95), rgba(255, 255, 255, 0.92));
+          color: var(--text);
+          cursor: pointer;
+        }
+
+        .scan-option input {
+          width: 18px;
+          height: 18px;
+          margin: 2px 0 0;
+          flex: 0 0 auto;
+          accent-color: var(--accent);
+        }
+
+        .scan-option strong,
+        .scan-option small {
+          display: block;
+        }
+
+        .scan-option strong {
+          font-size: 0.92rem;
+        }
+
+        .scan-option small {
+          margin-top: 4px;
+          color: var(--muted);
+          font-size: 0.8rem;
+          line-height: 1.45;
+        }
+
         .summary-card {
           padding: 18px;
           border-radius: 24px;
@@ -967,41 +1005,195 @@ class PhotoPdfConverter extends HTMLElement {
         }
 
         @media (max-width: 560px) {
-          .panel,
+          .shell {
+            padding: 10px;
+            border-radius: 22px;
+          }
+
+          .hero {
+            gap: 12px;
+            margin-bottom: 14px;
+          }
+
+          .hero-copy,
+          .hero-metrics,
+          .panel {
+            border-radius: 20px;
+          }
+
           .hero-copy,
           .hero-metrics {
             padding: 16px;
           }
 
+          .panel {
+            padding: 14px;
+          }
+
           .hero-copy h2 {
             max-width: none;
+            margin: 14px 0 10px;
+            font-size: clamp(1.9rem, 8.5vw, 2.6rem);
+            line-height: 1.04;
+            letter-spacing: -0.045em;
+          }
+
+          .hero-copy p {
+            font-size: 0.92rem;
+            line-height: 1.6;
+          }
+
+          .hero-points {
+            gap: 8px;
+            margin-top: 16px;
+          }
+
+          .hero-points span {
+            padding: 8px 10px;
+            font-size: 0.76rem;
+          }
+
+          .metric {
+            padding: 14px;
+            border-radius: 18px;
+          }
+
+          .metric strong {
+            font-size: 1.7rem;
+          }
+
+          .workspace {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+          }
+
+          .field-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
           }
 
           .preview-stage {
-            min-height: 260px;
+            min-height: 240px;
+            margin-bottom: 12px;
+          }
+
+          .preview-image {
+            max-height: min(48vh, 480px);
+          }
+
+          .thumb-grid {
+            max-height: min(52vh, 440px);
           }
 
           .thumb-card {
-            grid-template-columns: 1fr;
+            grid-template-columns: 76px minmax(0, 1fr);
+            gap: 10px;
+            padding: 10px;
           }
 
           .thumb-image-button {
-            min-height: 170px;
+            height: 100%;
+            min-height: 96px;
+            border-radius: 14px;
+          }
+
+          .thumb-actions {
+            gap: 6px;
+          }
+
+          .utility-button {
+            min-height: 42px;
+            flex: 1 1 72px;
+            padding: 8px 9px;
           }
 
           .preview-meta {
             position: static;
-            margin: 12px;
-            border-radius: 18px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            margin: 10px;
+            padding: 12px;
+            border-radius: 16px;
           }
 
           .panel-header {
             flex-direction: column;
+            gap: 8px;
           }
 
           .note {
             text-align: left;
             max-width: none;
+          }
+
+          .dropzone {
+            padding: 22px 12px;
+            border-radius: 20px;
+          }
+
+          .button-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+          }
+
+          .button-row #pickButton,
+          .button-row #cameraButton {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 10px;
+          }
+
+          .button-row #clearButton {
+            grid-column: 1 / -1;
+            min-height: 44px;
+          }
+
+          .scan-option {
+            padding: 13px;
+          }
+
+          .primary-button.wide {
+            min-height: 52px;
+          }
+
+          .camera-header {
+            padding: max(14px, env(safe-area-inset-top, 0px)) 14px 14px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .shell {
+            padding: 8px;
+          }
+
+          .field-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .thumb-card {
+            grid-template-columns: 68px minmax(0, 1fr);
+          }
+
+          .thumb-actions .utility-button {
+            flex-basis: calc(50% - 6px);
+          }
+
+          .drop-art {
+            width: 108px;
+            height: 82px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
           }
         }
 
@@ -1423,6 +1615,14 @@ class PhotoPdfConverter extends HTMLElement {
                 <input id="qualityInput" type="range" min="55" max="100" value="90" />
               </label>
 
+              <label class="scan-option" for="scanToggle">
+                <input id="scanToggle" type="checkbox" />
+                <span>
+                  <strong>Scan all images</strong>
+                  <small>Whiten page backgrounds and improve text contrast before the PDF is made.</small>
+                </span>
+              </label>
+
               <div class="summary-card">
                 <h4>Summary</h4>
                 <div class="summary-row">
@@ -1503,6 +1703,7 @@ class PhotoPdfConverter extends HTMLElement {
       marginValue: this.shadowRoot.getElementById("marginValue"),
       qualityInput: this.shadowRoot.getElementById("qualityInput"),
       qualityValue: this.shadowRoot.getElementById("qualityValue"),
+      scanToggle: this.shadowRoot.getElementById("scanToggle"),
       summaryPages: this.shadowRoot.getElementById("summaryPages"),
       summaryLayout: this.shadowRoot.getElementById("summaryLayout"),
       summaryMargin: this.shadowRoot.getElementById("summaryMargin"),
@@ -1564,6 +1765,7 @@ class PhotoPdfConverter extends HTMLElement {
 
     this.refs.clearButton.addEventListener("click", () => this.clearAll());
     this.refs.generateButton.addEventListener("click", () => this.generatePdf());
+    this.refs.scanToggle.addEventListener("change", () => this.setScanMode(this.refs.scanToggle.checked));
 
     for (const eventName of ["dragenter", "dragover"]) {
       this.refs.dropzone.addEventListener(eventName, (event) => this.onDragEnter(event));
@@ -1576,6 +1778,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.dropzone.addEventListener("drop", async (event) => this.onDrop(event));
 
     this.refs.thumbnailList.addEventListener("click", (event) => {
+      if (this.state.busy) return;
       const trigger = event.target.closest("[data-action]");
       if (!trigger) {
         return;
@@ -1601,6 +1804,7 @@ class PhotoPdfConverter extends HTMLElement {
     });
 
     this.refs.thumbnailList.addEventListener("dragstart", (event) => {
+      if (this.state.busy) return;
       const card = event.target.closest(".thumb-card");
       if (!card) {
         return;
@@ -1614,7 +1818,7 @@ class PhotoPdfConverter extends HTMLElement {
     });
 
     this.refs.thumbnailList.addEventListener("dragover", (event) => {
-      if (!this.draggedId) {
+      if (this.state.busy || !this.draggedId) {
         return;
       }
 
@@ -1625,6 +1829,7 @@ class PhotoPdfConverter extends HTMLElement {
 
     this.refs.thumbnailList.addEventListener("drop", (event) => {
       event.preventDefault();
+      if (this.state.busy) return;
       const card = event.target.closest(".thumb-card");
       const targetId = card?.dataset.id;
       if (!this.draggedId || !targetId || this.draggedId === targetId) {
@@ -1703,7 +1908,7 @@ class PhotoPdfConverter extends HTMLElement {
   }
 
   async handleFiles(files) {
-    if (!files.length) {
+    if (!files.length || this.state.busy) {
       return;
     }
 
@@ -1729,6 +1934,21 @@ class PhotoPdfConverter extends HTMLElement {
         loadedItems.push(result.value);
       } else {
         failedCount += 1;
+      }
+    }
+
+    if (this.state.scanEnabled && loadedItems.length) {
+      for (let index = 0; index < loadedItems.length; index += 1) {
+        try {
+          this.setStatus(`Scanning new image ${index + 1} of ${loadedItems.length}...`, "working");
+          await this.scanItem(loadedItems[index]);
+        } catch (error) {
+          failedCount += 1;
+          this.state.scanEnabled = false;
+          this.refs.scanToggle.checked = false;
+          this.setStatus(`Could not scan ${loadedItems[index].name}. Scan mode was turned off.`, "error");
+          break;
+        }
       }
     }
 
@@ -1765,6 +1985,7 @@ class PhotoPdfConverter extends HTMLElement {
         width: image.naturalWidth,
         height: image.naturalHeight,
         objectUrl,
+        scanObjectUrl: null,
       };
     } catch (error) {
       URL.revokeObjectURL(objectUrl);
@@ -1775,9 +1996,12 @@ class PhotoPdfConverter extends HTMLElement {
   clearAll() {
     for (const item of this.state.items) {
       URL.revokeObjectURL(item.objectUrl);
+      if (item.scanObjectUrl) URL.revokeObjectURL(item.scanObjectUrl);
     }
 
     this.state.items = [];
+    this.state.scanEnabled = false;
+    this.refs.scanToggle.checked = false;
     this.state.activeId = null;
     this.render();
     this.setStatus("All photos removed.", "info");
@@ -1791,6 +2015,11 @@ class PhotoPdfConverter extends HTMLElement {
 
     const [removed] = this.state.items.splice(index, 1);
     URL.revokeObjectURL(removed.objectUrl);
+    if (removed.scanObjectUrl) URL.revokeObjectURL(removed.scanObjectUrl);
+    if (!this.state.items.length) {
+      this.state.scanEnabled = false;
+      this.refs.scanToggle.checked = false;
+    }
 
     if (this.state.activeId === itemId) {
       this.state.activeId = this.state.items[Math.max(0, index - 1)]?.id || this.state.items[0]?.id || null;
@@ -1865,6 +2094,8 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.pickButton.disabled = this.state.busy;
     this.refs.clearButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
+    this.refs.scanToggle.disabled = this.state.items.length === 0 || this.state.busy;
+    this.refs.scanToggle.checked = this.state.scanEnabled;
     this.refs.cameraInput.disabled = this.state.busy;
     this.refs.cameraButton.disabled = this.state.busy;
     this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
@@ -1899,9 +2130,9 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.emptyPreview.hidden = true;
     this.refs.previewImage.hidden = false;
     this.refs.previewMeta.hidden = false;
-    this.refs.previewImage.src = active.objectUrl;
+    this.refs.previewImage.src = this.state.scanEnabled && active.scanObjectUrl ? active.scanObjectUrl : active.objectUrl;
     this.refs.previewName.textContent = active.name;
-    this.refs.previewDetails.textContent = `${active.width} x ${active.height} px / ${formatBytes(active.size)}`;
+    this.refs.previewDetails.textContent = `${active.width} x ${active.height} px / ${formatBytes(active.size)}${this.state.scanEnabled && active.scanObjectUrl ? " / scanned" : ""}`;
     this.refs.previewOrder.textContent = `Page ${pageNumber}`;
   }
 
@@ -1914,10 +2145,11 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.thumbnailList.innerHTML = this.state.items
       .map((item, index) => {
         const isActive = item.id === this.state.activeId;
+        const imageUrl = this.state.scanEnabled && item.scanObjectUrl ? item.scanObjectUrl : item.objectUrl;
         return `
           <article class="thumb-card ${isActive ? "active" : ""}" data-id="${item.id}" draggable="true">
             <button class="thumb-image-button" type="button" data-action="select" data-id="${item.id}">
-              <img src="${item.objectUrl}" alt="${escapeHtml(item.name)}" />
+              <img src="${imageUrl}" alt="${escapeHtml(item.name)}" />
             </button>
             <div class="thumb-body">
               <div class="thumb-title-row">
@@ -1963,7 +2195,8 @@ class PhotoPdfConverter extends HTMLElement {
   }
 
   async prepareImageForPdf(item, quality) {
-    const image = await loadImage(item.objectUrl);
+    const sourceUrl = this.state.scanEnabled && item.scanObjectUrl ? item.scanObjectUrl : item.objectUrl;
+    const image = await loadImage(sourceUrl);
     const maxDimension = 2400;
     const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -1985,6 +2218,176 @@ class PhotoPdfConverter extends HTMLElement {
     };
   }
 
+  async setScanMode(enabled) {
+    if (!enabled) {
+      this.state.scanEnabled = false;
+      this.render();
+      this.setStatus("Original photos will be used for the PDF.", "info");
+      return;
+    }
+
+    if (!this.state.items.length || this.state.busy) {
+      this.refs.scanToggle.checked = this.state.scanEnabled;
+      return;
+    }
+
+    this.state.scanEnabled = true;
+    this.state.busy = true;
+    this.render();
+    await waitForPaint();
+
+    try {
+      for (let index = 0; index < this.state.items.length; index += 1) {
+        this.setStatus(`Scanning image ${index + 1} of ${this.state.items.length}...`, "working");
+        await waitForPaint();
+        await this.scanItem(this.state.items[index]);
+      }
+      this.setStatus("All images scanned. Download the PDF to save the cleaned pages.", "success");
+    } catch (error) {
+      console.error(error);
+      this.state.scanEnabled = false;
+      this.refs.scanToggle.checked = false;
+      this.setStatus(error?.message || "Could not scan the images.", "error");
+    } finally {
+      this.state.busy = false;
+      this.render();
+    }
+  }
+
+  async scanItem(item) {
+    if (item.scanObjectUrl) {
+      return item.scanObjectUrl;
+    }
+
+    const image = await loadImage(item.objectUrl);
+    const maxDimension = 2200;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+    if (!context) throw new Error("Could not prepare an image for scanning.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    const imageData = context.getImageData(0, 0, width, height);
+    const pixels = imageData.data;
+    const pixelCount = width * height;
+    const edgeHistogram = new Uint32Array(4096);
+    const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 100));
+
+    const countEdgeColor = (x, y) => {
+      const offset = (y * width + x) * 4;
+      const key = ((pixels[offset] >> 4) << 8) | ((pixels[offset + 1] >> 4) << 4) | (pixels[offset + 2] >> 4);
+      edgeHistogram[key] += 1;
+    };
+
+    for (let x = 0; x < width; x += sampleStep) {
+      countEdgeColor(x, 0);
+      if (height > 1) countEdgeColor(x, height - 1);
+    }
+    for (let y = sampleStep; y < height - 1; y += sampleStep) {
+      countEdgeColor(0, y);
+      if (width > 1) countEdgeColor(width - 1, y);
+    }
+
+    let backgroundKey = 0;
+    for (let key = 1; key < edgeHistogram.length; key += 1) {
+      if (edgeHistogram[key] > edgeHistogram[backgroundKey]) backgroundKey = key;
+    }
+    const backgroundR = (((backgroundKey >> 8) & 15) << 4) + 8;
+    const backgroundG = (((backgroundKey >> 4) & 15) << 4) + 8;
+    const backgroundB = ((backgroundKey & 15) << 4) + 8;
+    const backgroundToleranceSquared = 62 * 62;
+    const backgroundMask = new Uint8Array(pixelCount);
+    const queue = new Int32Array(pixelCount);
+    let queueStart = 0;
+    let queueEnd = 0;
+
+    const enqueueBackground = (pixelIndex) => {
+      if (backgroundMask[pixelIndex]) return;
+      const offset = pixelIndex * 4;
+      const red = pixels[offset] - backgroundR;
+      const green = pixels[offset + 1] - backgroundG;
+      const blue = pixels[offset + 2] - backgroundB;
+      if (red * red + green * green + blue * blue > backgroundToleranceSquared) return;
+      backgroundMask[pixelIndex] = 1;
+      queue[queueEnd++] = pixelIndex;
+    };
+
+    for (let x = 0; x < width; x += 1) {
+      enqueueBackground(x);
+      if (height > 1) enqueueBackground((height - 1) * width + x);
+    }
+    for (let y = 1; y < height - 1; y += 1) {
+      enqueueBackground(y * width);
+      if (width > 1) enqueueBackground(y * width + width - 1);
+    }
+
+    while (queueStart < queueEnd) {
+      const pixelIndex = queue[queueStart++];
+      const x = pixelIndex % width;
+      if (x > 0) enqueueBackground(pixelIndex - 1);
+      if (x + 1 < width) enqueueBackground(pixelIndex + 1);
+      if (pixelIndex >= width) enqueueBackground(pixelIndex - width);
+      if (pixelIndex + width < pixelCount) enqueueBackground(pixelIndex + width);
+    }
+
+    const luminanceHistogram = new Uint32Array(256);
+    let contentPixels = 0;
+    for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
+      if (backgroundMask[pixelIndex]) continue;
+      const offset = pixelIndex * 4;
+      const luminance = Math.round(pixels[offset] * 0.299 + pixels[offset + 1] * 0.587 + pixels[offset + 2] * 0.114);
+      luminanceHistogram[luminance] += 1;
+      contentPixels += 1;
+    }
+
+    const findPercentile = (fraction) => {
+      const target = Math.max(1, Math.round(contentPixels * fraction));
+      let total = 0;
+      for (let value = 0; value < luminanceHistogram.length; value += 1) {
+        total += luminanceHistogram[value];
+        if (total >= target) return value;
+      }
+      return 255;
+    };
+
+    let blackPoint = findPercentile(0.04);
+    let whitePoint = findPercentile(0.94);
+    if (whitePoint - blackPoint < 32) {
+      blackPoint = 0;
+      whitePoint = 255;
+    }
+
+    for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
+      const offset = pixelIndex * 4;
+      if (backgroundMask[pixelIndex]) {
+        pixels[offset] = 255;
+        pixels[offset + 1] = 255;
+        pixels[offset + 2] = 255;
+        continue;
+      }
+
+      const luminance = pixels[offset] * 0.299 + pixels[offset + 1] * 0.587 + pixels[offset + 2] * 0.114;
+      const normalized = clamp((luminance - blackPoint) / Math.max(1, whitePoint - blackPoint), 0, 1);
+      const enhanced = normalized <= 0.14 ? 0 : normalized >= 0.8 ? 255 : Math.round(((normalized - 0.14) / 0.66) * 255);
+      pixels[offset] = enhanced;
+      pixels[offset + 1] = enhanced;
+      pixels[offset + 2] = enhanced;
+    }
+
+    context.putImageData(imageData, 0, 0);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    if (!blob) throw new Error(`Could not finish scanning ${item.name}.`);
+    item.scanObjectUrl = URL.createObjectURL(blob);
+    return item.scanObjectUrl;
+  }
+
   async generatePdf() {
     if (!this.state.items.length || this.state.busy) {
       return;
@@ -1992,10 +2395,20 @@ class PhotoPdfConverter extends HTMLElement {
 
     this.state.busy = true;
     this.render();
-    this.setStatus("Loading PDF engine...", "working");
     await waitForPaint();
 
     try {
+      if (this.state.scanEnabled) {
+        for (let index = 0; index < this.state.items.length; index += 1) {
+          this.setStatus(`Checking scanned image ${index + 1} of ${this.state.items.length}...`, "working");
+          await waitForPaint();
+          await this.scanItem(this.state.items[index]);
+        }
+        this.render();
+      }
+
+      this.setStatus("Loading PDF engine...", "working");
+      await waitForPaint();
       const jsPDF = await ensureJsPdf();
       const settings = this.getSettings();
       let documentRef = null;
