@@ -1,4 +1,5 @@
 ﻿let jsPdfLoader;
+let openCvLoader;
 
 const PAGE_LABELS = {
   a4: "A4",
@@ -97,6 +98,299 @@ function loadImage(url) {
     image.onerror = () => reject(new Error("That image could not be opened."));
     image.src = url;
   });
+}
+
+function ensureOpenCv() {
+  if (window.cv && typeof window.cv.Mat === "function") {
+    return Promise.resolve(window.cv);
+  }
+
+  if (!openCvLoader) {
+    openCvLoader = new Promise((resolve, reject) => {
+      let settled = false;
+      let attempts = 0;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        window.clearInterval(pollId);
+        callback(value);
+      };
+
+      let script = document.querySelector("script[data-photo-pdf-opencv]");
+      const scriptAlreadyExists = Boolean(script);
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://docs.opencv.org/4.x/opencv.js";
+        script.async = true;
+        script.dataset.photoPdfOpencv = "true";
+      }
+
+      script.addEventListener("error", () => {
+        finish(reject, new Error("The smart scan engine could not load. Check your internet connection and try again."));
+      }, { once: true });
+
+      const pollId = window.setInterval(() => {
+        const api = window.cv;
+        if (api && typeof api.then === "function") {
+          window.clearInterval(pollId);
+          api.then(
+            (readyApi) => finish(resolve, readyApi),
+            (error) => finish(reject, error || new Error("The smart scan engine could not start.")),
+          );
+          return;
+        }
+        if (api && typeof api.Mat === "function" && typeof api.imread === "function") {
+          finish(resolve, api);
+          return;
+        }
+        attempts += 1;
+        if (attempts >= 300) {
+          finish(reject, new Error("The smart scan engine took too long to start."));
+        }
+      }, 100);
+
+      if (!scriptAlreadyExists) {
+        document.head.appendChild(script);
+      }
+    });
+  }
+
+  return openCvLoader;
+}
+
+function orderDocumentCorners(points) {
+  const sums = points.map((point) => point.x + point.y);
+  const differences = points.map((point) => point.y - point.x);
+  const ordered = [
+    points[sums.indexOf(Math.min(...sums))],
+    points[differences.indexOf(Math.min(...differences))],
+    points[sums.indexOf(Math.max(...sums))],
+    points[differences.indexOf(Math.max(...differences))],
+  ];
+  const unique = new Set(ordered.map((point) => `${point.x},${point.y}`));
+  return unique.size === 4 ? ordered : null;
+}
+
+function distanceBetweenPoints(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function cornerAngleDegrees(previous, current, next) {
+  const firstX = previous.x - current.x;
+  const firstY = previous.y - current.y;
+  const nextX = next.x - current.x;
+  const nextY = next.y - current.y;
+  const denominator = Math.hypot(firstX, firstY) * Math.hypot(nextX, nextY);
+  if (!denominator) return 0;
+  const cosine = clamp((firstX * nextX + firstY * nextY) / denominator, -1, 1);
+  return Math.acos(cosine) * (180 / Math.PI);
+}
+
+function detectDocumentQuadrilateral(cv, canvas) {
+  let source = null;
+  let detectorImage = null;
+  let gray = null;
+  let blurred = null;
+  let edges = null;
+  let closed = null;
+  let edgeKernel = null;
+  let paperKernel = null;
+  let paperMask = null;
+  let adaptiveMask = null;
+  let darkMask = null;
+  let paperContours = null;
+  let adaptiveContours = null;
+  let darkContours = null;
+  let edgeContours = null;
+  let paperHierarchy = null;
+  let adaptiveHierarchy = null;
+  let darkHierarchy = null;
+  let edgeHierarchy = null;
+  let selected = null;
+
+  try {
+    source = cv.imread(canvas);
+    const detectionScale = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+    const detectionWidth = Math.max(1, Math.round(canvas.width * detectionScale));
+    const detectionHeight = Math.max(1, Math.round(canvas.height * detectionScale));
+    detectorImage = new cv.Mat();
+    cv.resize(source, detectorImage, new cv.Size(detectionWidth, detectionHeight), 0, 0, cv.INTER_AREA);
+
+    gray = new cv.Mat();
+    blurred = new cv.Mat();
+    edges = new cv.Mat();
+    closed = new cv.Mat();
+    edgeKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+    paperKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(25, 25));
+    cv.cvtColor(detectorImage, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    cv.Canny(blurred, edges, 30, 100);
+    cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, edgeKernel);
+
+    paperMask = new cv.Mat();
+    adaptiveMask = new cv.Mat();
+    darkMask = new cv.Mat();
+    cv.threshold(blurred, paperMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+    cv.threshold(blurred, darkMask, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
+    cv.morphologyEx(paperMask, paperMask, cv.MORPH_CLOSE, paperKernel);
+    cv.morphologyEx(darkMask, darkMask, cv.MORPH_CLOSE, paperKernel);
+    let adaptiveBlockSize = Math.min(51, detectionWidth, detectionHeight);
+    if (adaptiveBlockSize % 2 === 0) adaptiveBlockSize -= 1;
+    if (adaptiveBlockSize >= 3) {
+      cv.adaptiveThreshold(
+        blurred,
+        adaptiveMask,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY,
+        adaptiveBlockSize,
+        4,
+      );
+    } else {
+      paperMask.copyTo(adaptiveMask);
+    }
+    cv.morphologyEx(adaptiveMask, adaptiveMask, cv.MORPH_CLOSE, paperKernel);
+
+    edgeContours = new cv.MatVector();
+    paperContours = new cv.MatVector();
+    adaptiveContours = new cv.MatVector();
+    darkContours = new cv.MatVector();
+    edgeHierarchy = new cv.Mat();
+    paperHierarchy = new cv.Mat();
+    adaptiveHierarchy = new cv.Mat();
+    darkHierarchy = new cv.Mat();
+    cv.findContours(closed, edgeContours, edgeHierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+    cv.findContours(paperMask, paperContours, paperHierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+    cv.findContours(adaptiveMask, adaptiveContours, adaptiveHierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+    cv.findContours(darkMask, darkContours, darkHierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+    let bestScore = 0;
+    const imageArea = detectionWidth * detectionHeight;
+    const contourGroups = [edgeContours, paperContours, adaptiveContours, darkContours];
+    const groupWeights = [0.92, 1, 0.88, 0.72];
+    for (let groupIndex = 0; groupIndex < contourGroups.length; groupIndex += 1) {
+      const group = contourGroups[groupIndex];
+      for (let index = 0; index < group.size(); index += 1) {
+        const contour = group.get(index);
+        if (Math.abs(cv.contourArea(contour)) < imageArea * 0.05) {
+          contour.delete();
+          continue;
+        }
+        const hull = new cv.Mat();
+        const approximation = new cv.Mat();
+        try {
+          cv.convexHull(contour, hull, false, true);
+          const perimeter = cv.arcLength(hull, true);
+          if (!perimeter) continue;
+          cv.approxPolyDP(hull, approximation, 0.025 * perimeter, true);
+          if (approximation.rows !== 4 || !cv.isContourConvex(approximation)) continue;
+
+          const coordinates = approximation.data32S;
+          if (!coordinates || coordinates.length < 8) continue;
+          const rawPoints = [0, 1, 2, 3].map((pointIndex) => ({
+            x: coordinates[pointIndex * 2],
+            y: coordinates[pointIndex * 2 + 1],
+          }));
+          const points = orderDocumentCorners(rawPoints);
+          if (!points) continue;
+
+          const areaRatio = Math.abs(cv.contourArea(approximation)) / imageArea;
+          if (areaRatio < 0.12 || areaRatio > 0.99) continue;
+
+          const width = Math.max(distanceBetweenPoints(points[0], points[1]), distanceBetweenPoints(points[3], points[2]));
+          const height = Math.max(distanceBetweenPoints(points[0], points[3]), distanceBetweenPoints(points[1], points[2]));
+          const aspectRatio = width / Math.max(1, height);
+          if (aspectRatio < 0.24 || aspectRatio > 4.2) continue;
+
+          const angles = points.map((_, pointIndex) => cornerAngleDegrees(
+            points[(pointIndex + 3) % 4],
+            points[pointIndex],
+            points[(pointIndex + 1) % 4],
+          ));
+          if (angles.some((angle) => angle < 22 || angle > 158)) continue;
+
+          const borderHits = points.filter((point) =>
+            point.x < detectionWidth * 0.018 || point.x > detectionWidth * 0.982 ||
+            point.y < detectionHeight * 0.018 || point.y > detectionHeight * 0.982,
+          ).length;
+          if (borderHits >= 3) continue;
+
+          const anglePenalty = angles.reduce((sum, angle) => sum + Math.abs(90 - angle), 0) / 360;
+          const score = areaRatio * (1 - anglePenalty * 0.32) * (1 - borderHits * 0.06) * groupWeights[groupIndex];
+          if (score <= bestScore) continue;
+
+          const scaleX = canvas.width / detectionWidth;
+          const scaleY = canvas.height / detectionHeight;
+          bestScore = score;
+          selected = points.map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
+        } finally {
+          approximation.delete();
+          hull.delete();
+          contour.delete();
+        }
+      }
+    }
+  } finally {
+    for (const matrix of [
+      edgeHierarchy, paperHierarchy, adaptiveHierarchy, darkHierarchy,
+      edgeContours, paperContours, adaptiveContours, darkContours,
+      paperMask, adaptiveMask, darkMask, edgeKernel, paperKernel,
+      closed, edges, blurred, gray, detectorImage, source,
+    ]) {
+      if (matrix && typeof matrix.delete === "function") matrix.delete();
+    }
+  }
+
+  return selected;
+}
+
+function perspectiveCorrectCanvas(cv, canvas, corners) {
+  const outputWidth = Math.round(Math.max(
+    distanceBetweenPoints(corners[0], corners[1]),
+    distanceBetweenPoints(corners[3], corners[2]),
+  ));
+  const outputHeight = Math.round(Math.max(
+    distanceBetweenPoints(corners[0], corners[3]),
+    distanceBetweenPoints(corners[1], corners[2]),
+  ));
+  if (outputWidth < 120 || outputHeight < 120) return null;
+
+  const dimensionsScale = Math.min(1, 2400 / Math.max(outputWidth, outputHeight));
+  const width = Math.max(120, Math.round(outputWidth * dimensionsScale));
+  const height = Math.max(120, Math.round(outputHeight * dimensionsScale));
+  let source = null;
+  let destination = null;
+  let sourcePoints = null;
+  let destinationPoints = null;
+  let transform = null;
+
+  try {
+    source = cv.imread(canvas);
+    destination = new cv.Mat();
+    const pointValues = corners.flatMap((point) => [point.x, point.y]);
+    sourcePoints = cv.matFromArray(4, 1, cv.CV_32FC2, pointValues);
+    destinationPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, width - 1, 0, width - 1, height - 1, 0, height - 1]);
+    transform = cv.getPerspectiveTransform(sourcePoints, destinationPoints);
+    cv.warpPerspective(
+      source,
+      destination,
+      transform,
+      new cv.Size(width, height),
+      cv.INTER_CUBIC,
+      cv.BORDER_CONSTANT,
+      new cv.Scalar(255, 255, 255, 255),
+    );
+
+    const outputCanvas = document.createElement("canvas");
+    outputCanvas.width = width;
+    outputCanvas.height = height;
+    cv.imshow(outputCanvas, destination);
+    return outputCanvas;
+  } finally {
+    for (const matrix of [transform, destinationPoints, sourcePoints, destination, source]) {
+      if (matrix && typeof matrix.delete === "function") matrix.delete();
+    }
+  }
 }
 
 class PhotoPdfConverter extends HTMLElement {
@@ -890,6 +1184,10 @@ class PhotoPdfConverter extends HTMLElement {
           accent-color: var(--accent);
         }
 
+        .scan-option input:disabled {
+          cursor: not-allowed;
+        }
+
         .scan-option strong,
         .scan-option small {
           display: block;
@@ -904,6 +1202,29 @@ class PhotoPdfConverter extends HTMLElement {
           color: var(--muted);
           font-size: 0.8rem;
           line-height: 1.45;
+        }
+
+        .scan-settings {
+          display: grid;
+          gap: 12px;
+          padding: 12px;
+          border: 1px solid rgba(21, 131, 255, 0.14);
+          border-radius: 18px;
+          background: rgba(239, 247, 255, 0.58);
+        }
+
+        .scan-settings[hidden] {
+          display: none !important;
+        }
+
+        .scan-settings .field {
+          font-size: 0.88rem;
+        }
+
+        .scan-option-nested {
+          padding: 12px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.82);
         }
 
         .summary-card {
@@ -1619,9 +1940,19 @@ class PhotoPdfConverter extends HTMLElement {
                 <input id="scanToggle" type="checkbox" />
                 <span>
                   <strong>Scan all images</strong>
-                  <small>Whiten page backgrounds and improve text contrast before the PDF is made.</small>
+                  <small>Keep the page or open-book spread, crop away the surroundings, and straighten it.</small>
                 </span>
               </label>
+
+              <div class="scan-settings" id="scanSettings" hidden>
+                <label class="scan-option scan-option-nested" for="autoCropToggle">
+                  <input id="autoCropToggle" type="checkbox" checked />
+                  <span>
+                    <strong>Auto-crop and straighten</strong>
+                    <small>Detect a single page or open-book spread, then crop and straighten it when the page edges are clear.</small>
+                  </span>
+                </label>
+              </div>
 
               <div class="summary-card">
                 <h4>Summary</h4>
@@ -1704,6 +2035,8 @@ class PhotoPdfConverter extends HTMLElement {
       qualityInput: this.shadowRoot.getElementById("qualityInput"),
       qualityValue: this.shadowRoot.getElementById("qualityValue"),
       scanToggle: this.shadowRoot.getElementById("scanToggle"),
+      scanSettings: this.shadowRoot.getElementById("scanSettings"),
+      autoCropToggle: this.shadowRoot.getElementById("autoCropToggle"),
       summaryPages: this.shadowRoot.getElementById("summaryPages"),
       summaryLayout: this.shadowRoot.getElementById("summaryLayout"),
       summaryMargin: this.shadowRoot.getElementById("summaryMargin"),
@@ -1766,6 +2099,7 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.clearButton.addEventListener("click", () => this.clearAll());
     this.refs.generateButton.addEventListener("click", () => this.generatePdf());
     this.refs.scanToggle.addEventListener("change", () => this.setScanMode(this.refs.scanToggle.checked));
+    this.refs.autoCropToggle.addEventListener("change", () => this.rescanIfEnabled());
 
     for (const eventName of ["dragenter", "dragover"]) {
       this.refs.dropzone.addEventListener(eventName, (event) => this.onDragEnter(event));
@@ -2096,6 +2430,8 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.generateButton.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.scanToggle.disabled = this.state.items.length === 0 || this.state.busy;
     this.refs.scanToggle.checked = this.state.scanEnabled;
+    this.refs.scanSettings.hidden = !this.state.scanEnabled;
+    this.refs.autoCropToggle.disabled = !this.state.scanEnabled || this.state.busy;
     this.refs.cameraInput.disabled = this.state.busy;
     this.refs.cameraButton.disabled = this.state.busy;
     this.refs.pickButton.textContent = this.state.items.length ? "Add more" : "Add photos";
@@ -2130,9 +2466,12 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.emptyPreview.hidden = true;
     this.refs.previewImage.hidden = false;
     this.refs.previewMeta.hidden = false;
-    this.refs.previewImage.src = this.state.scanEnabled && active.scanObjectUrl ? active.scanObjectUrl : active.objectUrl;
+    const showingScan = this.state.scanEnabled && active.scanObjectUrl;
+    const previewWidth = showingScan ? active.scanWidth : active.width;
+    const previewHeight = showingScan ? active.scanHeight : active.height;
+    this.refs.previewImage.src = showingScan ? active.scanObjectUrl : active.objectUrl;
     this.refs.previewName.textContent = active.name;
-    this.refs.previewDetails.textContent = `${active.width} x ${active.height} px / ${formatBytes(active.size)}${this.state.scanEnabled && active.scanObjectUrl ? " / scanned" : ""}`;
+    this.refs.previewDetails.textContent = `${previewWidth} x ${previewHeight} px / ${formatBytes(active.size)}${showingScan ? ` / ${active.scanWasCropped ? "cropped scan" : "scanned"}` : ""}`;
     this.refs.previewOrder.textContent = `Page ${pageNumber}`;
   }
 
@@ -2145,7 +2484,10 @@ class PhotoPdfConverter extends HTMLElement {
     this.refs.thumbnailList.innerHTML = this.state.items
       .map((item, index) => {
         const isActive = item.id === this.state.activeId;
-        const imageUrl = this.state.scanEnabled && item.scanObjectUrl ? item.scanObjectUrl : item.objectUrl;
+        const showingScan = this.state.scanEnabled && item.scanObjectUrl;
+        const imageUrl = showingScan ? item.scanObjectUrl : item.objectUrl;
+        const thumbWidth = showingScan ? item.scanWidth : item.width;
+        const thumbHeight = showingScan ? item.scanHeight : item.height;
         return `
           <article class="thumb-card ${isActive ? "active" : ""}" data-id="${item.id}" draggable="true">
             <button class="thumb-image-button" type="button" data-action="select" data-id="${item.id}">
@@ -2156,7 +2498,7 @@ class PhotoPdfConverter extends HTMLElement {
                 <span class="order-pill">${String(index + 1).padStart(2, "0")}</span>
                 <div class="thumb-name">${escapeHtml(item.name)}</div>
               </div>
-              <div class="thumb-details">${item.width} x ${item.height} px / ${formatBytes(item.size)}</div>
+              <div class="thumb-details">${thumbWidth} x ${thumbHeight} px / ${formatBytes(item.size)}${showingScan && item.scanWasCropped ? " / cropped" : ""}</div>
               <div class="thumb-actions">
                 <button class="utility-button" type="button" data-action="select" data-id="${item.id}">Preview</button>
                 <button class="utility-button" type="button" data-action="up" data-id="${item.id}" ${index === 0 ? "disabled" : ""}>Up</button>
@@ -2232,17 +2574,47 @@ class PhotoPdfConverter extends HTMLElement {
     }
 
     this.state.scanEnabled = true;
+    await this.runScanQueue();
+  }
+
+  async rescanIfEnabled() {
+    if (!this.state.scanEnabled || this.state.busy || !this.state.items.length) {
+      return;
+    }
+    await this.runScanQueue();
+  }
+
+  async runScanQueue() {
+    if (!this.state.items.length || this.state.busy) return;
+
     this.state.busy = true;
     this.render();
     await waitForPaint();
 
+    let croppedCount = 0;
+    let unclearEdgeCount = 0;
+    let cropEngineUnavailable = false;
+    const autoCrop = this.refs.autoCropToggle.checked;
+
     try {
       for (let index = 0; index < this.state.items.length; index += 1) {
-        this.setStatus(`Scanning image ${index + 1} of ${this.state.items.length}...`, "working");
+        const verb = autoCrop ? "Finding page edges and cropping" : "Preparing image";
+        this.setStatus(`${verb} ${index + 1} of ${this.state.items.length}...`, "working");
         await waitForPaint();
-        await this.scanItem(this.state.items[index]);
+        const result = await this.scanItem(this.state.items[index]);
+        if (result.cropped) croppedCount += 1;
+        else if (autoCrop && !result.engineUnavailable) unclearEdgeCount += 1;
+        cropEngineUnavailable = cropEngineUnavailable || result.engineUnavailable;
       }
-      this.setStatus("All images scanned. Download the PDF to save the cleaned pages.", "success");
+
+      this.render();
+      let message = `${this.state.items.length} images processed.`;
+      if (autoCrop && cropEngineUnavailable) {
+        message += " The crop engine was unavailable, so the full frames were kept.";
+      } else if (autoCrop) {
+        message += ` Auto-cropped ${croppedCount}; kept ${unclearEdgeCount} full-frame where page edges were unclear.`;
+      }
+      this.setStatus(message, "success");
     } catch (error) {
       console.error(error);
       this.state.scanEnabled = false;
@@ -2255,16 +2627,21 @@ class PhotoPdfConverter extends HTMLElement {
   }
 
   async scanItem(item) {
-    if (item.scanObjectUrl) {
-      return item.scanObjectUrl;
+    const autoCrop = this.refs.autoCropToggle.checked;
+    const cacheKey = autoCrop ? "crop" : "frame";
+    if (item.scanObjectUrl && item.scanCacheKey === cacheKey) {
+      return {
+        cropped: item.scanWasCropped,
+        engineUnavailable: item.scanEngineUnavailable,
+      };
     }
 
     const image = await loadImage(item.objectUrl);
-    const maxDimension = 2200;
+    const maxDimension = 2400;
     const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const canvas = document.createElement("canvas");
+    let canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
 
@@ -2274,118 +2651,41 @@ class PhotoPdfConverter extends HTMLElement {
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
 
-    const imageData = context.getImageData(0, 0, width, height);
-    const pixels = imageData.data;
-    const pixelCount = width * height;
-    const edgeHistogram = new Uint32Array(4096);
-    const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 100));
-
-    const countEdgeColor = (x, y) => {
-      const offset = (y * width + x) * 4;
-      const key = ((pixels[offset] >> 4) << 8) | ((pixels[offset + 1] >> 4) << 4) | (pixels[offset + 2] >> 4);
-      edgeHistogram[key] += 1;
-    };
-
-    for (let x = 0; x < width; x += sampleStep) {
-      countEdgeColor(x, 0);
-      if (height > 1) countEdgeColor(x, height - 1);
-    }
-    for (let y = sampleStep; y < height - 1; y += sampleStep) {
-      countEdgeColor(0, y);
-      if (width > 1) countEdgeColor(width - 1, y);
-    }
-
-    let backgroundKey = 0;
-    for (let key = 1; key < edgeHistogram.length; key += 1) {
-      if (edgeHistogram[key] > edgeHistogram[backgroundKey]) backgroundKey = key;
-    }
-    const backgroundR = (((backgroundKey >> 8) & 15) << 4) + 8;
-    const backgroundG = (((backgroundKey >> 4) & 15) << 4) + 8;
-    const backgroundB = ((backgroundKey & 15) << 4) + 8;
-    const backgroundToleranceSquared = 62 * 62;
-    const backgroundMask = new Uint8Array(pixelCount);
-    const queue = new Int32Array(pixelCount);
-    let queueStart = 0;
-    let queueEnd = 0;
-
-    const enqueueBackground = (pixelIndex) => {
-      if (backgroundMask[pixelIndex]) return;
-      const offset = pixelIndex * 4;
-      const red = pixels[offset] - backgroundR;
-      const green = pixels[offset + 1] - backgroundG;
-      const blue = pixels[offset + 2] - backgroundB;
-      if (red * red + green * green + blue * blue > backgroundToleranceSquared) return;
-      backgroundMask[pixelIndex] = 1;
-      queue[queueEnd++] = pixelIndex;
-    };
-
-    for (let x = 0; x < width; x += 1) {
-      enqueueBackground(x);
-      if (height > 1) enqueueBackground((height - 1) * width + x);
-    }
-    for (let y = 1; y < height - 1; y += 1) {
-      enqueueBackground(y * width);
-      if (width > 1) enqueueBackground(y * width + width - 1);
-    }
-
-    while (queueStart < queueEnd) {
-      const pixelIndex = queue[queueStart++];
-      const x = pixelIndex % width;
-      if (x > 0) enqueueBackground(pixelIndex - 1);
-      if (x + 1 < width) enqueueBackground(pixelIndex + 1);
-      if (pixelIndex >= width) enqueueBackground(pixelIndex - width);
-      if (pixelIndex + width < pixelCount) enqueueBackground(pixelIndex + width);
-    }
-
-    const luminanceHistogram = new Uint32Array(256);
-    let contentPixels = 0;
-    for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
-      if (backgroundMask[pixelIndex]) continue;
-      const offset = pixelIndex * 4;
-      const luminance = Math.round(pixels[offset] * 0.299 + pixels[offset + 1] * 0.587 + pixels[offset + 2] * 0.114);
-      luminanceHistogram[luminance] += 1;
-      contentPixels += 1;
-    }
-
-    const findPercentile = (fraction) => {
-      const target = Math.max(1, Math.round(contentPixels * fraction));
-      let total = 0;
-      for (let value = 0; value < luminanceHistogram.length; value += 1) {
-        total += luminanceHistogram[value];
-        if (total >= target) return value;
+    let cv = null;
+    if (autoCrop) {
+      try {
+        cv = await ensureOpenCv();
+      } catch (error) {
+        console.warn("Smart page detection unavailable; keeping the full frame.", error);
       }
-      return 255;
-    };
-
-    let blackPoint = findPercentile(0.04);
-    let whitePoint = findPercentile(0.94);
-    if (whitePoint - blackPoint < 32) {
-      blackPoint = 0;
-      whitePoint = 255;
     }
 
-    for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
-      const offset = pixelIndex * 4;
-      if (backgroundMask[pixelIndex]) {
-        pixels[offset] = 255;
-        pixels[offset + 1] = 255;
-        pixels[offset + 2] = 255;
-        continue;
+    let cropped = false;
+    let engineUnavailable = autoCrop && !cv;
+    if (autoCrop && cv) {
+      const pageCorners = detectDocumentQuadrilateral(cv, canvas);
+      if (pageCorners) {
+        const correctedCanvas = perspectiveCorrectCanvas(cv, canvas, pageCorners);
+        if (correctedCanvas) {
+          canvas = correctedCanvas;
+          cropped = true;
+        }
       }
-
-      const luminance = pixels[offset] * 0.299 + pixels[offset + 1] * 0.587 + pixels[offset + 2] * 0.114;
-      const normalized = clamp((luminance - blackPoint) / Math.max(1, whitePoint - blackPoint), 0, 1);
-      const enhanced = normalized <= 0.14 ? 0 : normalized >= 0.8 ? 255 : Math.round(((normalized - 0.14) / 0.66) * 255);
-      pixels[offset] = enhanced;
-      pixels[offset + 1] = enhanced;
-      pixels[offset + 2] = enhanced;
     }
 
-    context.putImageData(imageData, 0, 0);
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.96));
     if (!blob) throw new Error(`Could not finish scanning ${item.name}.`);
-    item.scanObjectUrl = URL.createObjectURL(blob);
-    return item.scanObjectUrl;
+
+    const scannedUrl = URL.createObjectURL(blob);
+    if (item.scanObjectUrl) URL.revokeObjectURL(item.scanObjectUrl);
+    item.scanObjectUrl = scannedUrl;
+    item.scanCacheKey = cacheKey;
+    item.scanWidth = canvas.width;
+    item.scanHeight = canvas.height;
+    item.scanWasCropped = cropped;
+    item.scanEngineUnavailable = engineUnavailable;
+
+    return { cropped, engineUnavailable };
   }
 
   async generatePdf() {
@@ -2415,9 +2715,11 @@ class PhotoPdfConverter extends HTMLElement {
 
       for (let index = 0; index < this.state.items.length; index += 1) {
         const item = this.state.items[index];
+        const pageWidthSource = this.state.scanEnabled && item.scanWidth ? item.scanWidth : item.width;
+        const pageHeightSource = this.state.scanEnabled && item.scanHeight ? item.scanHeight : item.height;
         const orientation =
           settings.orientation === "auto"
-            ? item.width >= item.height
+            ? pageWidthSource >= pageHeightSource
               ? "landscape"
               : "portrait"
             : settings.orientation;
