@@ -608,7 +608,7 @@ h1, h2, h3, h4, p { text-transform: none; }
 .btn:hover:not(:disabled) { border-color: #b9c9e0; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { cursor: not-allowed; }
-.btn:focus-visible, .chip-btn:focus-visible, .camera-close:focus-visible, .shutter:focus-visible,
+.btn:focus-visible, .chip-btn:focus-visible,
 .nav-links a:focus-visible, .brand:focus-visible {
   outline: 3px solid rgba(47, 124, 246, 0.45); outline-offset: 2px;
 }
@@ -856,44 +856,98 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 }
 @keyframes pps-fade { from { opacity: 0; } }
 
-/* ---------- Camera ---------- */
+/* ---------- Camera (full screen, many photos in a row) ---------- */
 
 .camera-modal {
-  position: fixed; inset: 0; z-index: 2147483001; display: grid; place-items: center; padding: 16px;
-  background: rgba(5, 12, 26, 0.84); animation: pps-fade 0.15s ease;
+  position: fixed; inset: 0; z-index: 2147483001; width: 100%; height: 100vh; height: 100dvh;
+  overflow: hidden; background: #000; color: #fff; animation: pps-fade 0.15s ease;
+  -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
 }
-.camera-sheet {
-  display: grid; width: min(760px, 100%); max-height: 100%; overflow: hidden; border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.1); background: #0d1b33; color: #fff;
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8);
+.camera-modal:fullscreen { width: 100%; height: 100%; }
+.camera-modal video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000;
 }
-.camera-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 20px; }
-.camera-head strong { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
-.camera-count { padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); color: #cbd6e6; font-size: 13px; font-weight: 600; }
-.camera-close {
-  display: grid; place-items: center; width: 38px; height: 38px; margin-left: auto; padding: 0; border: 0; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 24px; line-height: 1; cursor: pointer;
-}
-.camera-close:hover { background: rgba(255, 255, 255, 0.18); }
-.camera-view { position: relative; min-height: 0; aspect-ratio: 4 / 3; max-height: 68vh; background: #000; }
-.camera-view video { width: 100%; height: 100%; object-fit: contain; }
+.camera-modal.is-mirrored video { transform: scaleX(-1); }
 .camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 .camera-flash.is-flashing { animation: pps-flash 0.28s ease-out; }
 @keyframes pps-flash { from { opacity: 0.85; } to { opacity: 0; } }
-.camera-error {
-  position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 28px;
-  color: #f6cfcf; font-size: 15px; line-height: 1.6; text-align: center;
+
+.camera-top {
+  position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px;
+  padding: calc(14px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 40px calc(18px + env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 100%);
 }
-.camera-actions { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 16px 18px; }
-.camera-fallback { justify-self: start; }
-.camera-done { grid-column: 3; justify-self: end; }
+.camera-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.camera-count {
+  padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.16);
+  color: #e6edf7; font-size: 13px; font-weight: 700;
+}
+.camera-top-actions { display: flex; gap: 10px; margin-left: auto; }
+.camera-icon-btn {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 28px; line-height: 1; cursor: pointer;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background 0.15s ease;
+}
+.camera-icon-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.camera-icon-btn svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.camera-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 16px;
+  padding: 44px calc(22px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
+}
+.camera-last {
+  position: relative; justify-self: start; width: 60px; height: 60px; border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.92); background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.camera-last img { display: block; width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+.camera-last.is-empty { visibility: hidden; }
+.camera-last.is-pop { animation: pps-pop 0.32s ease-out; }
+@keyframes pps-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.camera-last-badge {
+  position: absolute; top: -9px; right: -9px; display: grid; place-items: center; min-width: 25px; height: 25px;
+  padding: 0 6px; border-radius: 999px; border: 2px solid #fff; background: var(--blue);
+  color: #fff; font-size: 12.5px; font-weight: 800;
+}
 .shutter {
-  grid-column: 2; width: 70px; height: 70px; padding: 5px; border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.4); background: #fff content-box; cursor: pointer;
-  transition: transform 0.12s ease, opacity 0.2s ease;
+  grid-column: 2; width: 80px; height: 80px; padding: 5px; border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.88); background: #fff content-box; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); transition: transform 0.12s ease, opacity 0.2s ease;
 }
-.shutter:active:not(:disabled) { transform: scale(0.93); }
+.shutter:active:not(:disabled) { transform: scale(0.9); }
 .shutter:disabled { opacity: 0.35; cursor: not-allowed; }
+.camera-done {
+  grid-column: 3; justify-self: end; min-width: 116px; padding: 15px 28px; border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, #4b93ff 0%, #1f6ef0 100%); color: #fff;
+  font-size: 17px; font-weight: 800; line-height: 1.2; cursor: pointer;
+  box-shadow: 0 12px 26px -10px rgba(31, 110, 240, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.camera-done:hover { background: linear-gradient(180deg, #5a9cff 0%, #2a76f2 100%); }
+.shutter:focus-visible, .camera-done:focus-visible, .camera-icon-btn:focus-visible {
+  outline: 3px solid rgba(130, 178, 255, 0.95); outline-offset: 3px;
+}
+.camera-hint {
+  position: absolute; left: 50%; bottom: calc(146px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  max-width: calc(100% - 32px); margin: 0; padding: 9px 16px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55); color: #f1f5fb; font-size: 14px; font-weight: 600; text-align: center;
+  white-space: nowrap; pointer-events: none; transition: opacity 0.3s ease;
+}
+.camera-hint.is-hidden { opacity: 0; }
+.camera-error {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 40px));
+  display: grid; justify-items: center; gap: 16px; padding: 24px; border-radius: 20px;
+  background: rgba(18, 28, 48, 0.9); text-align: center;
+}
+.camera-error p { margin: 0; color: #f6d4d4; font-size: 15px; line-height: 1.6; }
+
+@media (max-width: 480px) {
+  .camera-done { min-width: 0; padding: 14px 22px; }
+  .camera-hint { white-space: normal; border-radius: 16px; }
+}
 
 /* ---------- Responsive (based on the space the tool gets on your page) ---------- */
 
@@ -939,12 +993,6 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
   .pitch-card h2 { font-size: 29px; }
 }
 
-@media (max-width: 560px) {
-  .camera-modal { padding: 0; }
-  .camera-sheet { height: 100%; border-radius: 0; grid-template-rows: auto 1fr auto; }
-  .camera-view { aspect-ratio: auto; max-height: none; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
@@ -956,6 +1004,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
   const ICON_PLUS = '<svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>';
   const ICON_CHECK = '<span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
+  const ICON_SWITCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.66-5.66L20 8.7"/><path d="M20 4v4.7h-4.7"/><path d="M20 12a8 8 0 0 1-13.66 5.66L4 15.3"/><path d="M4 20v-4.7h4.7"/></svg>';
 
   function markup(appOnly) {
     const H = appOnly ? 'h2' : 'h1';
@@ -1156,23 +1205,29 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
 <div class="drop-overlay" id="dropOverlay" hidden><div class="drop-overlay-box">Drop photos to add them</div></div>
 
-<div class="camera-modal" id="cameraModal" role="dialog" aria-modal="true" aria-label="Take photo" hidden>
-  <div class="camera-sheet">
-    <div class="camera-head">
-      <strong>Camera</strong>
-      <span class="camera-count" id="cameraCount">0 captured</span>
-      <button type="button" class="camera-close" id="cameraCloseButton" aria-label="Close camera">×</button>
+<div class="camera-modal" id="cameraModal" role="dialog" aria-modal="true" aria-label="Camera" hidden>
+  <video id="cameraVideo" playsinline muted autoplay></video>
+  <div class="camera-flash" id="cameraFlash"></div>
+  <div class="camera-top">
+    <span class="camera-title">Camera</span>
+    <span class="camera-count" id="cameraCount" aria-live="polite">0 photos</span>
+    <div class="camera-top-actions">
+      <button type="button" class="camera-icon-btn" id="cameraSwitchButton" aria-label="Switch camera" hidden>${ICON_SWITCH}</button>
+      <button type="button" class="camera-icon-btn" id="cameraCloseButton" aria-label="Close camera">×</button>
     </div>
-    <div class="camera-view">
-      <video id="cameraVideo" playsinline muted autoplay></video>
-      <div class="camera-flash" id="cameraFlash"></div>
-      <p class="camera-error" id="cameraError" hidden></p>
+  </div>
+  <p class="camera-hint" id="cameraHint">Tap the round button for each page, then tap Done.</p>
+  <div class="camera-error" id="cameraErrorBox" hidden>
+    <p id="cameraError"></p>
+    <button type="button" class="btn" id="cameraFallbackButton">Use camera app</button>
+  </div>
+  <div class="camera-bottom">
+    <div class="camera-last is-empty" id="cameraLast" aria-hidden="true">
+      <img id="cameraLastImage" alt="">
+      <span class="camera-last-badge" id="cameraLastBadge">0</span>
     </div>
-    <div class="camera-actions">
-      <button type="button" class="btn camera-fallback" id="cameraFallbackButton" hidden>Use camera app</button>
-      <button type="button" class="shutter" id="cameraShutter" aria-label="Capture photo" disabled></button>
-      <button type="button" class="btn btn-primary camera-done" id="cameraDoneButton">Done</button>
-    </div>
+    <button type="button" class="shutter" id="cameraShutter" aria-label="Take photo" disabled></button>
+    <button type="button" class="camera-done" id="cameraDoneButton">Done</button>
   </div>
 </div>`;
   }
@@ -1226,6 +1281,12 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       cameraModal: $('cameraModal'),
       cameraVideo: $('cameraVideo'),
       cameraCount: $('cameraCount'),
+      cameraHint: $('cameraHint'),
+      cameraLast: $('cameraLast'),
+      cameraLastImage: $('cameraLastImage'),
+      cameraLastBadge: $('cameraLastBadge'),
+      cameraSwitchButton: $('cameraSwitchButton'),
+      cameraErrorBox: $('cameraErrorBox'),
       cameraError: $('cameraError'),
       cameraFlash: $('cameraFlash'),
       cameraShutter: $('cameraShutter'),
@@ -1667,19 +1728,47 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       }
     }
 
-    // ---------- Camera ----------
+    // ---------- Camera: full screen, take as many photos as you like, then Done ----------
 
     let cameraStream = null;
+    let cameraDevices = [];
+    let cameraDeviceId = null; // remembered, so the camera reopens on the one you used last
+    let cameraStartToken = 0;
     let cameraSessionCount = 0;
     let cameraSerial = 0;
+    let cameraLastUrl = null;
+    let cameraWasFullscreen = false;
     let focusBeforeCamera = null;
     let savedOverflow = '';
 
     const cameraAvailable = () =>
       !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext;
+    const finePointer = () => !!(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
+    const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+
+    function enterFullscreen(element) {
+      const request = element.requestFullscreen || element.webkitRequestFullscreen;
+      if (!request) return; // e.g. iPhone: the camera still fills the whole screen
+      try {
+        const result = request.call(element, { navigationUI: 'hide' });
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } catch (_) { /* not allowed here: stay as a full-window overlay */ }
+    }
+
+    function exitFullscreen() {
+      if (!fullscreenElement()) return;
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      try {
+        const result = exit.call(document);
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } catch (_) { /* ignore */ }
+    }
 
     function updateCameraCount() {
-      ui.cameraCount.textContent = `${cameraSessionCount} captured`;
+      ui.cameraCount.textContent = plural(cameraSessionCount, 'photo');
+      ui.cameraLastBadge.textContent = String(cameraSessionCount);
+      ui.cameraLast.classList.toggle('is-empty', cameraSessionCount === 0);
+      ui.cameraHint.classList.toggle('is-hidden', cameraSessionCount > 0);
     }
 
     function stopCameraStream() {
@@ -1701,40 +1790,86 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
         message = 'The camera is busy in another app. Close it and try again.';
       }
       ui.cameraError.textContent = message;
-      ui.cameraError.hidden = false;
-      ui.cameraFallbackButton.hidden = false;
+      ui.cameraErrorBox.hidden = false;
+      ui.cameraHint.classList.add('is-hidden');
+      ui.cameraShutter.disabled = true;
+      ui.cameraDoneButton.focus();
+    }
+
+    async function startStream(deviceId) {
+      cameraStartToken += 1;
+      const token = cameraStartToken;
+      stopCameraStream();
+      ui.cameraShutter.disabled = true;
+
+      const size = { width: { ideal: 3840 }, height: { ideal: 2160 } }; // the best the camera offers
+      const video = deviceId ? { deviceId: { exact: deviceId }, ...size } : { facingMode: { ideal: 'environment' }, ...size };
+      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      if (token !== cameraStartToken || ui.cameraModal.hidden) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      cameraStream = stream;
+      const track = stream.getVideoTracks()[0];
+      const info = track && typeof track.getSettings === 'function' ? track.getSettings() : {};
+      cameraDeviceId = info.deviceId || deviceId || null;
+      ui.cameraModal.classList.toggle('is-mirrored', info.facingMode === 'user'); // selfie camera: mirror the preview only
+      ui.cameraVideo.srcObject = stream;
+      await ui.cameraVideo.play().catch(() => {});
+      ui.cameraErrorBox.hidden = true;
+      ui.cameraShutter.disabled = false;
+
+      try {
+        cameraDevices = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
+      } catch (_) {
+        cameraDevices = [];
+      }
+      ui.cameraSwitchButton.hidden = cameraDevices.length < 2;
     }
 
     async function openCamera() {
       if (!cameraAvailable()) {
-        ui.cameraInput.click(); // native camera capture on phones
+        ui.cameraInput.click(); // no camera access here (e.g. not https): use the phone's camera app
         return;
       }
+      if (!ui.cameraModal.hidden) return;
       getPool();
       focusBeforeCamera = root.activeElement;
       cameraSessionCount = 0;
       updateCameraCount();
-      ui.cameraError.hidden = true;
-      ui.cameraFallbackButton.hidden = true;
-      ui.cameraShutter.disabled = true;
+      ui.cameraHint.textContent = finePointer()
+        ? 'Click the round button (or press Space) for each page, then click Done.'
+        : 'Tap the round button for each page, then tap Done.';
+      ui.cameraErrorBox.hidden = true;
+      ui.cameraSwitchButton.hidden = true;
       ui.cameraModal.hidden = false;
+      cameraWasFullscreen = false;
+      enterFullscreen(ui.cameraModal); // must happen right inside the click
       savedOverflow = document.documentElement.style.overflow;
       document.documentElement.style.overflow = 'hidden';
       ui.cameraDoneButton.focus();
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } },
-          audio: false,
-        });
-        if (ui.cameraModal.hidden) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
+        try {
+          await startStream(cameraDeviceId);
+        } catch (error) {
+          if (!cameraDeviceId) throw error;
+          cameraDeviceId = null; // the remembered camera is gone: use the default one
+          await startStream(null);
         }
-        cameraStream = stream;
-        ui.cameraVideo.srcObject = stream;
-        await ui.cameraVideo.play().catch(() => {});
-        ui.cameraShutter.disabled = false;
+        if (!ui.cameraModal.hidden && !ui.cameraShutter.disabled) ui.cameraShutter.focus();
+      } catch (error) {
+        if (!ui.cameraModal.hidden) showCameraError(error);
+      }
+    }
+
+    async function switchCamera() {
+      if (cameraDevices.length < 2) return;
+      const index = cameraDevices.findIndex((device) => device.deviceId === cameraDeviceId);
+      const next = cameraDevices[(index + 1) % cameraDevices.length];
+      try {
+        await startStream(next.deviceId);
         ui.cameraShutter.focus();
       } catch (error) {
         showCameraError(error);
@@ -1743,19 +1878,37 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
     function closeCamera() {
       if (ui.cameraModal.hidden) return;
+      cameraStartToken += 1; // cancel a camera that is still starting
       stopCameraStream();
+      cameraWasFullscreen = false;
+      exitFullscreen();
       ui.cameraModal.hidden = true;
       document.documentElement.style.overflow = savedOverflow;
+      if (cameraLastUrl) {
+        URL.revokeObjectURL(cameraLastUrl);
+        cameraLastUrl = null;
+      }
+      ui.cameraLastImage.removeAttribute('src');
+      if (cameraSessionCount) {
+        setStatus(`Added ${plural(cameraSessionCount, 'photo')} from the camera. ${plural(state.items.length, 'page')} in the queue.`, 'success');
+      }
       if (focusBeforeCamera && typeof focusBeforeCamera.focus === 'function') focusBeforeCamera.focus();
     }
 
     function capturePhoto() {
+      if (ui.cameraModal.hidden || ui.cameraShutter.disabled) return;
       const video = ui.cameraVideo;
       const w = video.videoWidth;
       const h = video.videoHeight;
       if (!w || !h) return;
-      const canvas = mainMakeCanvas(w, h);
-      canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+
+      // Grab the frame at the size the PDF uses, so every shot is quick and light.
+      const size = fitWithin(w, h, MAX_EDGE);
+      const canvas = mainMakeCanvas(size.w, size.h);
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(video, 0, 0, size.w, size.h);
 
       cameraSessionCount += 1;
       cameraSerial += 1;
@@ -1763,18 +1916,26 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       updateCameraCount();
 
       ui.cameraFlash.classList.remove('is-flashing');
-      void ui.cameraFlash.offsetWidth; // restart the animation
+      ui.cameraLast.classList.remove('is-pop');
+      void ui.cameraFlash.offsetWidth; // restart the animations
       ui.cameraFlash.classList.add('is-flashing');
+      ui.cameraLast.classList.add('is-pop');
 
       canvas.toBlob((blob) => {
         if (!blob) return;
+        if (!ui.cameraModal.hidden) {
+          if (cameraLastUrl) URL.revokeObjectURL(cameraLastUrl);
+          cameraLastUrl = URL.createObjectURL(blob);
+          ui.cameraLastImage.src = cameraLastUrl;
+        }
         const file = new File([blob], `Camera ${String(serial).padStart(2, '0')}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
-        addFiles([file], { fromCamera: true });
+        addFiles([file], { fromCamera: true }); // starts preparing the page right away
       }, 'image/jpeg', 0.92);
     }
 
     function trapCameraFocus(event) {
-      const focusable = Array.from(ui.cameraModal.querySelectorAll('button')).filter((el) => !el.hidden && !el.disabled);
+      const focusable = Array.from(ui.cameraModal.querySelectorAll('button'))
+        .filter((el) => !el.disabled && el.getClientRects().length > 0);
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -1912,12 +2073,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     ui.cameraShutter.addEventListener('click', capturePhoto);
     ui.cameraDoneButton.addEventListener('click', closeCamera);
     ui.cameraCloseButton.addEventListener('click', closeCamera);
+    ui.cameraSwitchButton.addEventListener('click', switchCamera);
     ui.cameraFallbackButton.addEventListener('click', () => {
       closeCamera();
       ui.cameraInput.click();
-    });
-    ui.cameraModal.addEventListener('click', (event) => {
-      if (event.target === ui.cameraModal) closeCamera();
     });
 
     // ---------- Page-level listeners (drop/paste anywhere), added while on the page ----------
@@ -1967,8 +2126,20 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
           closeCamera();
         } else if (event.key === 'Tab') {
           trapCameraFocus(event);
+        } else if (event.key === ' ' && !event.repeat) {
+          // Space takes a photo, unless a button has focus (then Space presses that button).
+          const active = root.activeElement;
+          if (active && active.tagName === 'BUTTON') return;
+          event.preventDefault();
+          capturePhoto();
         }
       }],
+      // Leaving full screen (Esc, or the back gesture on Android) also closes the camera.
+      ...['fullscreenchange', 'webkitfullscreenchange'].map((type) => [document, type, () => {
+        if (ui.cameraModal.hidden) return;
+        if (fullscreenElement()) cameraWasFullscreen = true;
+        else if (cameraWasFullscreen) closeCamera();
+      }]),
       [window, 'pagehide', () => closeCamera()],
     ];
 
