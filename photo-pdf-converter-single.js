@@ -45,6 +45,8 @@
   const MAX_EDGE = 2560; // longest side in px for embedded images
   const THUMB_EDGE = 360; // longest side in px for queue thumbnails
   const QUALITY_DEBOUNCE_MS = 300;
+  const CAMERA_JPEG_QUALITY = 0.95; // camera shots are saved crisp, then compressed with the PDF quality setting
+  const FRAME_HOOKS = { isStale: () => false, onThumb: () => {} };
   const IMAGE_EXT = /\.(avif|bmp|gif|heic|heif|jfif|jpe?g|png|webp)$/i;
   const HEIC_EXT = /\.(heic|heif)$/i;
   const FONT_URL = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap';
@@ -77,6 +79,20 @@
     const toBlob = (canvas, quality) => canvas.convertToBlob({ type: 'image/jpeg', quality });
 
     self.onmessage = async (event) => {
+      if (event.data.frame) {
+        // A camera frame (ImageBitmap): turn it into a JPEG off the main thread.
+        const { jobId, frame, quality, maxEdge } = event.data;
+        try {
+          const out = await renderJpeg(frame, frame.width, frame.height, maxEdge, quality, makeCanvas, toBlob);
+          self.postMessage({ jobId, kind: 'done', blob: out.blob, w: out.w, h: out.h });
+        } catch (error) {
+          self.postMessage({ jobId, kind: 'error', message: (error && error.message) || String(error) });
+        } finally {
+          frame.close();
+        }
+        return;
+      }
+
       const { jobId, file, quality, maxEdge, thumbEdge, wantThumb } = event.data;
       let bitmap = null;
       try {
@@ -116,10 +132,12 @@
       }
     }
 
-    run(payload, hooks) {
+    run(payload, hooks, options = {}) {
       return new Promise((resolve, reject) => {
         this.seq += 1;
-        this.queue.push({ id: this.seq, payload, hooks, resolve, reject, worker: null });
+        const job = { id: this.seq, payload, hooks, transfer: options.transfer || [], resolve, reject, worker: null };
+        if (options.priority) this.queue.unshift(job); // camera shots jump the queue
+        else this.queue.push(job);
         this.pump();
       });
     }
@@ -134,7 +152,7 @@
         const worker = this.idle.pop();
         job.worker = worker;
         this.active.set(job.id, job);
-        worker.postMessage({ jobId: job.id, ...job.payload });
+        worker.postMessage({ jobId: job.id, ...job.payload }, job.transfer);
       }
     }
 
@@ -869,8 +887,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 }
 .camera-modal.is-mirrored video { transform: scaleX(-1); }
 .camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
-.camera-flash.is-flashing { animation: pps-flash 0.28s ease-out; }
-@keyframes pps-flash { from { opacity: 0.85; } to { opacity: 0; } }
+.camera-flash.is-flashing { animation: pps-flash 0.16s ease-out; }
+@keyframes pps-flash { from { opacity: 0.55; } to { opacity: 0; } }
 
 .camera-top {
   position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px;
@@ -885,8 +903,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 .camera-top-actions { display: flex; gap: 10px; margin-left: auto; }
 .camera-icon-btn {
   display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 28px; line-height: 1; cursor: pointer;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background 0.15s ease;
+  background: rgba(0, 0, 0, 0.38); color: #fff; font-size: 28px; line-height: 1; cursor: pointer;
+  touch-action: manipulation; transition: background 0.15s ease;
 }
 .camera-icon-btn:hover { background: rgba(255, 255, 255, 0.28); }
 .camera-icon-btn svg {
@@ -904,7 +922,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
   border: 2px solid rgba(255, 255, 255, 0.92); background: rgba(255, 255, 255, 0.12);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
-.camera-last img { display: block; width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+.camera-last canvas { display: block; width: 100%; height: 100%; border-radius: 12px; }
 .camera-last.is-empty { visibility: hidden; }
 .camera-last.is-pop { animation: pps-pop 0.32s ease-out; }
 @keyframes pps-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
@@ -916,14 +934,15 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 .shutter {
   grid-column: 2; width: 80px; height: 80px; padding: 5px; border-radius: 50%;
   border: 4px solid rgba(255, 255, 255, 0.88); background: #fff content-box; cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); transition: transform 0.12s ease, opacity 0.2s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.2s ease;
 }
-.shutter:active:not(:disabled) { transform: scale(0.9); }
+.shutter:active:not(:disabled), .shutter.is-pressed { transform: scale(0.9); }
 .shutter:disabled { opacity: 0.35; cursor: not-allowed; }
 .camera-done {
   grid-column: 3; justify-self: end; min-width: 116px; padding: 15px 28px; border: 0; border-radius: 999px;
   background: linear-gradient(180deg, #4b93ff 0%, #1f6ef0 100%); color: #fff;
-  font-size: 17px; font-weight: 800; line-height: 1.2; cursor: pointer;
+  font-size: 17px; font-weight: 800; line-height: 1.2; cursor: pointer; touch-action: manipulation;
   box-shadow: 0 12px 26px -10px rgba(31, 110, 240, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .camera-done:hover { background: linear-gradient(180deg, #5a9cff 0%, #2a76f2 100%); }
@@ -1223,7 +1242,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
   </div>
   <div class="camera-bottom">
     <div class="camera-last is-empty" id="cameraLast" aria-hidden="true">
-      <img id="cameraLastImage" alt="">
+      <canvas id="cameraLastCanvas" width="120" height="120"></canvas>
       <span class="camera-last-badge" id="cameraLastBadge">0</span>
     </div>
     <button type="button" class="shutter" id="cameraShutter" aria-label="Take photo" disabled></button>
@@ -1283,7 +1302,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       cameraCount: $('cameraCount'),
       cameraHint: $('cameraHint'),
       cameraLast: $('cameraLast'),
-      cameraLastImage: $('cameraLastImage'),
+      cameraLastCanvas: $('cameraLastCanvas'),
       cameraLastBadge: $('cameraLastBadge'),
       cameraSwitchButton: $('cameraSwitchButton'),
       cameraErrorBox: $('cameraErrorBox'),
@@ -1323,7 +1342,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
     // ---------- Queue management ----------
 
-    function addFiles(fileList, { fromCamera = false } = {}) {
+    function addFiles(fileList, { fromCamera = false, quiet = false } = {}) {
       const all = Array.from(fileList || []);
       const files = all.filter(isImageFile);
       const skipped = all.length - files.length;
@@ -1360,9 +1379,11 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       }
 
       state.selectedId = firstNew.id;
-      let message = fromCamera ? `Photo captured. ${plural(state.items.length, 'page')} in the queue.` : `${plural(files.length, 'photo')} added.`;
-      if (skipped) message += ` Skipped ${plural(skipped, 'file')} that ${skipped === 1 ? "isn't an image" : "aren't images"}.`;
-      setStatus(message, 'success');
+      if (!quiet) {
+        let message = fromCamera ? `Photo captured. ${plural(state.items.length, 'page')} in the queue.` : `${plural(files.length, 'photo')} added.`;
+        if (skipped) message += ` Skipped ${plural(skipped, 'file')} that ${skipped === 1 ? "isn't an image" : "aren't images"}.`;
+        setStatus(message, 'success');
+      }
       render();
     }
 
@@ -1494,6 +1515,9 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     }
 
     function render() {
+      // While the full-screen camera is open nothing behind it is visible, so skip the work
+      // (keeps the live preview smooth). closeCamera() renders once when it closes.
+      if (!ui.cameraModal.hidden) return;
       renderQueue();
       renderPreview();
       renderSettings();
@@ -1736,7 +1760,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     let cameraStartToken = 0;
     let cameraSessionCount = 0;
     let cameraSerial = 0;
-    let cameraLastUrl = null;
+    let cameraAddChain = Promise.resolve(); // keeps photos in the order they were taken
     let cameraWasFullscreen = false;
     let focusBeforeCamera = null;
     let savedOverflow = '';
@@ -1802,7 +1826,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       stopCameraStream();
       ui.cameraShutter.disabled = true;
 
-      const size = { width: { ideal: 3840 }, height: { ideal: 2160 } }; // the best the camera offers
+      // 1080p at 30 fps: starts fast and keeps the preview smooth (4K makes many cameras slow and choppy).
+      const size = { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } };
       const video = deviceId ? { deviceId: { exact: deviceId }, ...size } : { facingMode: { ideal: 'environment' }, ...size };
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
       if (token !== cameraStartToken || ui.cameraModal.hidden) {
@@ -1884,15 +1909,52 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       exitFullscreen();
       ui.cameraModal.hidden = true;
       document.documentElement.style.overflow = savedOverflow;
-      if (cameraLastUrl) {
-        URL.revokeObjectURL(cameraLastUrl);
-        cameraLastUrl = null;
-      }
-      ui.cameraLastImage.removeAttribute('src');
-      if (cameraSessionCount) {
-        setStatus(`Added ${plural(cameraSessionCount, 'photo')} from the camera. ${plural(state.items.length, 'page')} in the queue.`, 'success');
+      render(); // catch the page up on everything added while the camera was open
+      const taken = cameraSessionCount;
+      if (taken) {
+        cameraAddChain.then(() => {
+          setStatus(`Added ${plural(taken, 'photo')} from the camera. ${plural(state.items.length, 'page')} in the queue.`, 'success');
+        });
       }
       if (focusBeforeCamera && typeof focusBeforeCamera.focus === 'function') focusBeforeCamera.focus();
+    }
+
+    function drawCameraThumb(video, w, h) {
+      const canvas = ui.cameraLastCanvas;
+      const scale = Math.max(canvas.width / w, canvas.height / h);
+      const dw = w * scale;
+      const dh = h * scale;
+      canvas.getContext('2d').drawImage(video, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    }
+
+    // Snapshot the current frame right away; the JPEG encoding happens on a background thread.
+    async function grabFrame(video) {
+      const workerPool = getPool();
+      if (workerPool && !poolBroken && typeof createImageBitmap === 'function') {
+        let frame = null;
+        try {
+          frame = await createImageBitmap(video);
+        } catch (_) {
+          frame = null;
+        }
+        if (frame) {
+          try {
+            const result = await workerPool.run(
+              { frame, quality: CAMERA_JPEG_QUALITY, maxEdge: MAX_EDGE },
+              FRAME_HOOKS,
+              { transfer: [frame], priority: true },
+            );
+            if (result && result.blob) return result.blob;
+          } catch (_) { /* fall back to the main thread below */ }
+        }
+      }
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) throw new Error('No camera frame');
+      const size = fitWithin(w, h, MAX_EDGE);
+      const canvas = mainMakeCanvas(size.w, size.h);
+      canvas.getContext('2d', { alpha: false }).drawImage(video, 0, 0, size.w, size.h);
+      return mainToBlob(canvas, CAMERA_JPEG_QUALITY);
     }
 
     function capturePhoto() {
@@ -1902,13 +1964,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       const h = video.videoHeight;
       if (!w || !h) return;
 
-      // Grab the frame at the size the PDF uses, so every shot is quick and light.
-      const size = fitWithin(w, h, MAX_EDGE);
-      const canvas = mainMakeCanvas(size.w, size.h);
-      const ctx = canvas.getContext('2d', { alpha: false });
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(video, 0, 0, size.w, size.h);
+      const framePromise = grabFrame(video); // takes the snapshot immediately
+      drawCameraThumb(video, w, h); // instant feedback, no encoding needed
 
       cameraSessionCount += 1;
       cameraSerial += 1;
@@ -1921,16 +1978,14 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       ui.cameraFlash.classList.add('is-flashing');
       ui.cameraLast.classList.add('is-pop');
 
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        if (!ui.cameraModal.hidden) {
-          if (cameraLastUrl) URL.revokeObjectURL(cameraLastUrl);
-          cameraLastUrl = URL.createObjectURL(blob);
-          ui.cameraLastImage.src = cameraLastUrl;
-        }
-        const file = new File([blob], `Camera ${String(serial).padStart(2, '0')}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
-        addFiles([file], { fromCamera: true }); // starts preparing the page right away
-      }, 'image/jpeg', 0.92);
+      // Add to the queue in shooting order, even if a later shot finishes encoding first.
+      cameraAddChain = cameraAddChain
+        .then(() => framePromise)
+        .then((blob) => {
+          const file = new File([blob], `Camera ${String(serial).padStart(2, '0')}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+          addFiles([file], { fromCamera: true, quiet: true }); // starts preparing the PDF page right away
+        })
+        .catch(() => {});
     }
 
     function trapCameraFocus(event) {
@@ -2070,7 +2125,18 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     if (resizeObserver) resizeObserver.observe(ui.preview);
 
     // Camera
-    ui.cameraShutter.addEventListener('click', capturePhoto);
+    // Shoot the moment the finger/mouse goes down (no waiting for release).
+    ui.cameraShutter.addEventListener('pointerdown', (event) => {
+      if (event.button > 0) return; // ignore right/middle clicks
+      event.preventDefault();
+      ui.cameraShutter.classList.add('is-pressed');
+      capturePhoto();
+    });
+    const releaseShutter = () => ui.cameraShutter.classList.remove('is-pressed');
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => ui.cameraShutter.addEventListener(type, releaseShutter));
+    ui.cameraShutter.addEventListener('click', (event) => {
+      if (event.detail === 0) capturePhoto(); // keyboard (Enter/Space); pointer presses already shot
+    });
     ui.cameraDoneButton.addEventListener('click', closeCamera);
     ui.cameraCloseButton.addEventListener('click', closeCamera);
     ui.cameraSwitchButton.addEventListener('click', switchCamera);
