@@ -1023,6 +1023,10 @@
 
   let pool = null;
   let poolBroken = !workersSupported;
+  let poolSize = 1;
+
+  // How many photos are prepared at the same time (used to predict waiting time).
+  const parallelJobs = () => (pool && !poolBroken ? poolSize : 1);
 
   function getPool() {
     if (pool || poolBroken) return pool;
@@ -1030,6 +1034,7 @@
       const cores = navigator.hardwareConcurrency || 4;
       const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 4;
       const size = Math.max(1, Math.min(lowMemory ? 2 : 4, cores - 1));
+      poolSize = size;
       pool = new WorkerPool(size, () => { poolBroken = true; });
     } catch (_) {
       poolBroken = true; // e.g. a Content-Security-Policy that blocks blob: workers
@@ -1934,6 +1939,75 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
   .editor-actions { margin-left: auto; }
 }
 
+/* ---------- Coffee break (loading screen while a big PDF is prepared) ---------- */
+
+.brew-modal {
+  position: fixed; inset: 0; z-index: 2147483002; display: grid; place-items: center; padding: 20px;
+  background: rgba(7, 20, 42, 0.74); animation: pps-fade 0.2s ease;
+}
+.brew-card {
+  width: min(420px, 100%); padding: 26px 26px 18px; border-radius: 30px; text-align: center; color: var(--ink);
+  background: radial-gradient(120% 80% at 50% 0%, #fffaf3 0%, #f5ece1 100%);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7), inset 0 1px 0 #fff;
+  animation: brew-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+@keyframes brew-pop { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+.brew-cup { display: block; width: 168px; height: auto; margin: -4px auto 4px; overflow: visible; }
+.brew-saucer { fill: #eadccc; stroke: #3b2a20; stroke-width: 5; }
+.brew-handle { fill: none; stroke: #3b2a20; stroke-width: 8; stroke-linecap: round; }
+.brew-body { fill: #ffffff; }
+.brew-outline { fill: none; stroke: #3b2a20; stroke-width: 5; stroke-linejoin: round; }
+.brew-rim { fill: none; stroke: #3b2a20; stroke-width: 3; opacity: 0.35; }
+.brew-level { transform: translateY(160px); transition: transform 0.6s cubic-bezier(0.3, 0.8, 0.3, 1); }
+.brew-wave { animation: brew-wave 1.6s linear infinite; }
+@keyframes brew-wave { to { transform: translateX(-50px); } }
+.brew-heart { fill: #f2e1cb; opacity: 0; transform: scale(0.4); transform-box: fill-box; transform-origin: center; transition: opacity 0.4s ease 0.2s, transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.2s; }
+.brew-steam path {
+  fill: none; stroke: #c4b2a2; stroke-width: 5; stroke-linecap: round; opacity: 0;
+  animation: brew-steam 2.4s ease-in-out infinite;
+}
+.brew-steam path:nth-child(2) { animation-delay: 0.8s; }
+.brew-steam path:nth-child(3) { animation-delay: 1.6s; }
+@keyframes brew-steam {
+  0% { opacity: 0; transform: translateY(12px); }
+  35% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+.brew-title {
+  margin: 4px 0 4px; font-family: var(--font-display); font-size: 25px; font-weight: 800; letter-spacing: -0.03em; color: #2b1d14;
+}
+.brew-sub { margin: 0; color: #7a6253; font-size: 14.5px; line-height: 1.5; }
+.brew-bar { position: relative; height: 14px; margin: 18px 0 8px; overflow: hidden; border-radius: 999px; background: #e9dccd; box-shadow: inset 0 1px 2px rgba(59, 42, 32, 0.18); }
+.brew-fill {
+  position: relative; display: block; width: 0; height: 100%; overflow: hidden; border-radius: inherit;
+  background: linear-gradient(90deg, #d9a06b 0%, #a8693f 60%, #7a4526 100%);
+  transition: width 0.35s ease;
+}
+.brew-fill::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.22) 0 8px, rgba(255, 255, 255, 0) 8px 16px);
+  background-size: 22.6px 22.6px; animation: brew-stripes 0.8s linear infinite;
+}
+@keyframes brew-stripes { to { background-position: 22.6px 0; } }
+.brew-meta { display: flex; justify-content: space-between; gap: 12px; color: #6f5a4c; font-size: 13.5px; font-weight: 600; }
+.brew-tip { min-height: 1.5em; margin: 14px 0 6px; color: #a06a43; font-size: 14px; font-style: italic; transition: opacity 0.25s ease; }
+.brew-tip.is-fading { opacity: 0; }
+.brew-cancel {
+  margin-top: 4px; padding: 8px 16px; border: 0; border-radius: 999px; background: transparent;
+  color: #7a6253; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.brew-cancel:hover { background: rgba(122, 98, 83, 0.1); }
+.brew-cancel:focus-visible { outline: 3px solid rgba(168, 105, 63, 0.45); outline-offset: 2px; }
+.brew-modal.is-done .brew-heart { opacity: 1; transform: scale(1); }
+.brew-modal.is-done .brew-cup { animation: brew-cheers 0.6s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.brew-modal.is-done .brew-fill::after { animation: none; opacity: 0; }
+.brew-modal.is-done .brew-cancel { visibility: hidden; }
+@keyframes brew-cheers { 30% { transform: translateY(-8px) rotate(-4deg); } 60% { transform: translateY(0) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .brew-steam path { animation: none !important; opacity: 0.6; }
+  .brew-wave, .brew-fill::after, .brew-modal.is-done .brew-cup { animation: none !important; }
+}
+
 /* ---------- Responsive (based on the space the tool gets on your page) ---------- */
 
 @container pps (min-width: 760px) {
@@ -2273,6 +2347,49 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       <button type="button" class="camera-done" id="editorApplyButton">Apply</button>
     </div>
   </div>
+</div>
+
+<div class="brew-modal" id="brewModal" role="dialog" aria-modal="true" aria-labelledby="brewTitle" hidden>
+  <div class="brew-card">
+    <svg class="brew-cup" viewBox="0 0 200 190" aria-hidden="true">
+      <defs>
+        <clipPath id="ppsCupClip"><path d="M38 62 H152 L142 148 Q140 160 128 160 H62 Q50 160 48 148 Z"/></clipPath>
+        <linearGradient id="ppsCoffee" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#c0814f"/>
+          <stop offset="0.25" stop-color="#8a5532"/>
+          <stop offset="1" stop-color="#4b2a16"/>
+        </linearGradient>
+      </defs>
+      <g class="brew-steam">
+        <path d="M72 50 q-9 -10 0 -20 q9 -10 0 -20"/>
+        <path d="M95 46 q-9 -10 0 -20 q9 -10 0 -20"/>
+        <path d="M118 50 q-9 -10 0 -20 q9 -10 0 -20"/>
+      </g>
+      <ellipse class="brew-saucer" cx="95" cy="166" rx="82" ry="11"/>
+      <path class="brew-handle" d="M149 80 C178 80 180 122 144 128"/>
+      <path class="brew-body" d="M38 62 H152 L142 148 Q140 160 128 160 H62 Q50 160 48 148 Z"/>
+      <g clip-path="url(#ppsCupClip)">
+        <g class="brew-level" id="brewLevel">
+          <path class="brew-wave" fill="url(#ppsCoffee)"
+            d="M-100 0 Q-87.5 -6 -75 0 T-50 0 T-25 0 T0 0 T25 0 T50 0 T75 0 T100 0 T125 0 T150 0 T175 0 T200 0 T225 0 V140 H-100 Z"/>
+          <path class="brew-heart" d="M95 16 c-7 -8 -16 -2 -9 6 l9 8 l9 -8 c7 -8 -2 -14 -9 -6z"/>
+        </g>
+      </g>
+      <path class="brew-outline" d="M38 62 H152 L142 148 Q140 160 128 160 H62 Q50 160 48 148 Z"/>
+      <ellipse class="brew-rim" cx="95" cy="62" rx="57" ry="5"/>
+    </svg>
+    <h2 class="brew-title" id="brewTitle">Enjoy your coffee ☕</h2>
+    <p class="brew-sub" id="brewSub">Your PDF is brewing. Sit back for a moment.</p>
+    <div class="brew-bar" id="brewBar" role="progressbar" aria-label="PDF progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <span class="brew-fill" id="brewFill"></span>
+    </div>
+    <div class="brew-meta">
+      <span id="brewCount">Getting started…</span>
+      <span id="brewEta" aria-live="polite"></span>
+    </div>
+    <p class="brew-tip" id="brewTip">Grinding the beans…</p>
+    <button type="button" class="brew-cancel" id="brewCancel">Cancel</button>
+  </div>
 </div>`;
   }
 
@@ -2336,6 +2453,16 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       editorCancelButton: $('editorCancelButton'),
       editorCloseButton: $('editorCloseButton'),
       editorApplyButton: $('editorApplyButton'),
+      brewModal: $('brewModal'),
+      brewTitle: $('brewTitle'),
+      brewSub: $('brewSub'),
+      brewBar: $('brewBar'),
+      brewFill: $('brewFill'),
+      brewCount: $('brewCount'),
+      brewEta: $('brewEta'),
+      brewTip: $('brewTip'),
+      brewCancel: $('brewCancel'),
+      brewLevel: $('brewLevel'),
       sumPages: $('sumPages'),
       sumLayout: $('sumLayout'),
       sumMargin: $('sumMargin'),
@@ -2917,15 +3044,192 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       }
     }
 
+    // ---------- Coffee break: a loading screen when the PDF will take a while ----------
+
+    const slowDevice = () => (navigator.hardwareConcurrency || 4) <= 4
+      || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+    // First guess (ms on one background helper) for preparing a photo, before anything is measured.
+    function estimatePageMs(item) {
+      const fromFileSize = item.size / 320000; // a phone JPEG is ~0.32 MB per megapixel
+      const fromPixels = item.width && item.height ? (item.width * item.height) / 1e6 : 0; // once the size is known
+      const megapixels = Math.min(48, Math.max(0.3, fromFileSize, fromPixels));
+      let perMegapixel = 20; // decode, resize, encode
+      if (item.scan) perMegapixel += 20; // find + straighten the page
+      if (item.look !== 'original') perMegapixel += 12; // Enhanced / B&W
+      return (40 + megapixels * perMegapixel) * (slowDevice() ? 2.5 : 1);
+    }
+
+    function brewTips(items) {
+      const tips = ['Grinding the beans… reading your photos'];
+      if (items.some((item) => item.scan)) tips.push('Straightening the pages…');
+      if (items.some((item) => item.look === 'enhanced')) tips.push('Whitening the paper, darkening the text…');
+      if (items.some((item) => item.look === 'bw')) tips.push('Inking your pages in black & white…');
+      tips.push('Brewing your PDF…', 'Adding a little crema on top…', 'Almost time for that first sip…');
+      return tips;
+    }
+
+    function formatWait(ms) {
+      if (ms < 1500) return 'Almost ready…';
+      const seconds = Math.ceil(ms / 1000);
+      if (seconds < 60) return `About ${seconds} seconds left`;
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return `About ${minutes} min${rest ? ` ${rest} s` : ''} left`;
+    }
+
+    function setBrewProgress(share) {
+      const pct = Math.round(share * 100);
+      ui.brewFill.style.width = `${pct}%`;
+      ui.brewBar.setAttribute('aria-valuenow', String(pct));
+      ui.brewLevel.style.transform = `translateY(${160 - 92 * share}px)`; // the cup fills up with the progress
+    }
+
+    let activeBrew = null;
+
+    // Predicts how long the remaining pages need. Shows the coffee screen if that's more than ~1.5 s
+    // (or if the wait turns out longer than 0.9 s anyway), so quick downloads never flash it.
+    function createBrew() {
+      const waiting = state.items.filter((item) => item.status === 'pending');
+      const weights = new Map(waiting.map((item) => [item, estimatePageMs(item)]));
+      let totalWeight = 0;
+      weights.forEach((w) => { totalWeight += w; });
+      const predictedMs = totalWeight / parallelJobs();
+      const startedAt = performance.now();
+      const tips = brewTips(waiting);
+      let shown = false;
+      let cancelled = false;
+      let finished = false;
+      let showTimer = 0;
+      let ticker = 0;
+      let tipTimer = 0;
+      let closeTimer = 0;
+      let progress = 0;
+      let eta = null;
+      let tipIndex = 0;
+      let focusBefore = null;
+      let savedOverflow = '';
+      let resolveCancel = () => {};
+      const cancelPromise = new Promise((resolve) => { resolveCancel = resolve; });
+
+      const doneWeight = () => {
+        let done = 0;
+        weights.forEach((w, item) => { if (item.status !== 'pending' || item.removed) done += w; });
+        return done;
+      };
+
+      function paint() {
+        const elapsed = performance.now() - startedAt;
+        const share = totalWeight ? doneWeight() / totalWeight : 1;
+        // Once pages start finishing, trust the real speed; before that, use the prediction.
+        let guess;
+        if (share > 0 && share < 1) guess = (elapsed * (1 - share)) / share;
+        else if (share >= 1) guess = 0;
+        else guess = Math.max(predictedMs - elapsed, elapsed * 0.6); // slower than predicted: stretch, don't promise "almost"
+        eta = eta === null ? guess : eta * 0.8 + guess * 0.2;
+        const byTime = elapsed / (elapsed + Math.max(eta, 1));
+        progress = Math.max(progress, Math.min(0.97, Math.max(share, byTime))); // never goes backwards
+        setBrewProgress(progress);
+        const usable = state.items.filter((item) => item.status !== 'error');
+        const ready = usable.filter((item) => item.status === 'ready').length;
+        ui.brewCount.textContent = `${ready} of ${plural(usable.length, 'page')} ready`;
+        ui.brewEta.textContent = formatWait(eta);
+      }
+
+      function nextTip() {
+        tipIndex = (tipIndex + 1) % tips.length;
+        ui.brewTip.classList.add('is-fading');
+        setTimeout(() => {
+          ui.brewTip.textContent = tips[tipIndex];
+          ui.brewTip.classList.remove('is-fading');
+        }, 250);
+      }
+
+      function stopTimers() {
+        clearTimeout(showTimer);
+        clearInterval(ticker);
+        clearInterval(tipTimer);
+      }
+
+      function show() {
+        if (shown || cancelled || finished) return;
+        shown = true;
+        activeBrew = controller;
+        focusBefore = root.activeElement;
+        ui.brewModal.classList.remove('is-done');
+        ui.brewTitle.textContent = 'Enjoy your coffee ☕';
+        ui.brewSub.textContent = `Your PDF is brewing (${plural(waiting.length, 'page')} to prepare). Sit back for a moment.`;
+        ui.brewTip.textContent = tips[0];
+        setBrewProgress(0);
+        ui.brewModal.hidden = false;
+        savedOverflow = document.documentElement.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        ui.brewCancel.focus();
+        paint();
+        ticker = setInterval(paint, 250);
+        tipTimer = setInterval(nextTip, 2600);
+      }
+
+      function close() {
+        stopTimers();
+        clearTimeout(closeTimer);
+        if (!shown) return;
+        shown = false;
+        ui.brewModal.hidden = true;
+        ui.brewModal.classList.remove('is-done');
+        document.documentElement.style.overflow = savedOverflow;
+        if (focusBefore && typeof focusBefore.focus === 'function') focusBefore.focus();
+        if (activeBrew === controller) activeBrew = null;
+      }
+
+      const controller = {
+        predictedMs,
+        cancelPromise,
+        get cancelled() { return cancelled; },
+        get done() { return finished; },
+        update() { if (shown) paint(); },
+        cancel() {
+          if (finished) return;
+          cancelled = true;
+          resolveCancel();
+          close();
+        },
+        finish(message) {
+          finished = true;
+          stopTimers();
+          if (!shown) return;
+          setBrewProgress(1);
+          ui.brewModal.classList.add('is-done');
+          ui.brewTitle.textContent = 'Your PDF is ready! ☕';
+          ui.brewSub.textContent = message;
+          ui.brewCount.textContent = 'All pages ready';
+          ui.brewEta.textContent = 'Done';
+          ui.brewTip.textContent = 'Enjoy your coffee, and your PDF.';
+          closeTimer = setTimeout(close, 1800);
+        },
+        close,
+      };
+
+      if (waiting.length) {
+        if (predictedMs > 1500) show();
+        else showTimer = setTimeout(show, 900);
+      }
+      return controller;
+    }
+
     // ---------- Export ----------
 
-    async function waitForPages(onProgress) {
+    // Waits until every page is prepared. Returns false if the coffee screen's Cancel was pressed.
+    async function waitForPages(onProgress, brew) {
       for (;;) {
+        if (brew && brew.cancelled) return false;
         const pending = state.items.filter((item) => item.status === 'pending');
-        if (!pending.length) return;
+        if (!pending.length) return true;
         const usable = state.items.filter((item) => item.status !== 'error').length;
         onProgress(usable - pending.length, usable);
-        await Promise.race(pending.map((item) => item.promise));
+        const waits = pending.map((item) => item.promise);
+        if (brew) waits.push(brew.cancelPromise);
+        await Promise.race(waits);
       }
     }
 
@@ -2935,12 +3239,18 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       ui.generateButton.classList.add('is-busy');
       ui.generateLabel.textContent = 'Building PDF…';
       renderControls();
+      const brew = createBrew();
 
       try {
-        await waitForPages((ready, total) => {
+        const complete = await waitForPages((ready, total) => {
           setStatus(`Preparing pages… ${ready}/${total} ready.`, 'working');
           ui.generateLabel.textContent = `Preparing ${ready}/${total}…`;
-        });
+          brew.update();
+        }, brew);
+        if (!complete) {
+          setStatus('Download cancelled. Your pages keep getting ready in the background, so the next try is quicker.', 'info');
+          return;
+        }
 
         const pages = state.items.filter((item) => item.status === 'ready' && item.encoded);
         if (!pages.length) throw new Error('None of the photos could be read.');
@@ -2955,8 +3265,11 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
         const failed = state.items.filter((item) => item.status === 'error').length;
         let message = `Saved ${fileName}: ${plural(pages.length, 'page')}, ${formatBytes(blob.size)}, built in ${buildMs < 1 ? '<1' : Math.round(buildMs)} ms.`;
         if (failed) message += ` Left out ${plural(failed, 'unreadable photo')}.`;
+        state.scanReport = false; // the "Saved…" message matters more than a scan summary
         setStatus(message, 'success');
+        brew.finish(`Saved ${fileName}: ${plural(pages.length, 'page')}, ${formatBytes(blob.size)}.`);
       } catch (error) {
+        brew.close();
         setStatus((error && error.message) || 'Could not build the PDF.', 'error');
       } finally {
         state.busy = false;
@@ -3636,6 +3949,11 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       if (event.key === 'Enter' && !ui.generateButton.disabled) generatePdf();
     });
     ui.generateButton.addEventListener('click', generatePdf);
+    ui.brewCancel.addEventListener('click', () => { if (activeBrew) activeBrew.cancel(); });
+    ui.brewModal.addEventListener('click', (event) => {
+      // Once the PDF is ready, a tap anywhere closes the screen.
+      if (activeBrew && activeBrew.done && event.target === ui.brewModal) activeBrew.close();
+    });
 
     // Preview image
     ui.previewImage.addEventListener('load', () => layoutPaper(selectedItem()));
@@ -3712,6 +4030,19 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
         addFiles(files);
       }],
       [document, 'keydown', (event) => {
+        if (!ui.brewModal.hidden) {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            if (activeBrew) {
+              if (activeBrew.done) activeBrew.close();
+              else activeBrew.cancel();
+            }
+          } else if (event.key === 'Tab') {
+            event.preventDefault(); // Cancel is the only control here
+            ui.brewCancel.focus();
+          }
+          return;
+        }
         if (!ui.editorModal.hidden) {
           const onHandle = root.activeElement && root.activeElement.classList.contains('editor-handle');
           if (event.key === 'Escape') {
@@ -3758,6 +4089,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     api.detach = () => {
       closeCamera();
       closeEditor();
+      if (activeBrew) activeBrew.close();
       showOverlay(false);
       dragDepth = 0;
       pageListeners.forEach(([target, type, fn]) => target.removeEventListener(type, fn));
