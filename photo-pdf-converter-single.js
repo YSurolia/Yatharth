@@ -80,6 +80,23 @@
     const toBlob = (canvas, quality) => canvas.convertToBlob({ type: 'image/jpeg', quality });
 
     self.onmessage = async (event) => {
+      if (event.data.detect) {
+        // Live camera preview: find the page in a small frame, for the on-screen outline.
+        const { jobId, detect } = event.data;
+        try {
+          const size = fitWithin(detect.width, detect.height, 320);
+          const canvas = makeCanvas(size.w, size.h);
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(detect, 0, 0, size.w, size.h);
+          const found = detectDocument(ctx.getImageData(0, 0, size.w, size.h));
+          self.postMessage({ jobId, kind: 'done', found });
+        } catch (error) {
+          self.postMessage({ jobId, kind: 'error', message: (error && error.message) || String(error) });
+        } finally {
+          detect.close();
+        }
+        return;
+      }
       if (event.data.frame) {
         // A camera frame (ImageBitmap): turn it into a JPEG off the main thread.
         const { jobId, frame, quality, maxEdge } = event.data;
@@ -97,7 +114,7 @@
       const { jobId, file, quality, maxEdge, thumbEdge, wantThumb, scan, corners, refine, manual, look } = event.data;
       let bitmap = null;
       try {
-        bitmap = await createImageBitmap(file); // applies EXIF rotation
+        bitmap = await decodePhoto(file); // applies EXIF rotation; shrinks huge photos while decoding
         const page = preparePage(bitmap, bitmap.width, bitmap.height, { scan, corners, refine, manual, look, maxEdge }, makeCanvas);
         if (wantThumb) {
           const thumb = await renderJpeg(page.source, page.w, page.h, thumbEdge, 0.8, makeCanvas, toBlob);
@@ -109,7 +126,7 @@
         const buffer = await out.blob.arrayBuffer();
         self.postMessage({
           jobId, kind: 'done', buffer, w: out.w, h: out.h, srcW: page.w, srcH: page.h,
-          scanned: page.scanned, corners: page.corners, processed: page.processed,
+          scanned: page.scanned, corners: page.corners, guess: page.guess, processed: page.processed,
         }, [buffer]);
       } catch (error) {
         self.postMessage({ jobId, kind: 'error', message: (error && error.message) || String(error) });
@@ -127,29 +144,48 @@
   // Grayscale min/max filter with a square window (done in two 1-D passes).
   // A max pass then a min pass ("closing") wipes out thin dark marks such as text,
   // leaving a plain page whose outline is easy to find.
+  // (van Herk / Gil–Werman: about 3 comparisons per pixel whatever the window size.)
   function scanMinMax(src, w, h, r, isMax) {
+    const k = 2 * r + 1;
+    const size = Math.max(w, h) + 2 * r;
+    const line = new Float32Array(size);
+    const pre = new Float32Array(size);
+    const suf = new Float32Array(size);
+    const pad = isMax ? -Infinity : Infinity;
     const tmp = new Float32Array(w * h);
     const out = new Float32Array(w * h);
+    const result = new Float32Array(size);
+    const sign = isMax ? 1 : -1; // compare sign*a > sign*b, so one code path serves min and max
+    // One padded line: the window for output x covers line[x .. x + k - 1].
+    const filter = (n, count) => {
+      for (let i = 0; i < n; i += 1) {
+        const v = line[i];
+        if (i % k === 0) pre[i] = v;
+        else { const p = pre[i - 1]; pre[i] = sign * v > sign * p ? v : p; }
+      }
+      for (let i = n - 1; i >= 0; i -= 1) {
+        const v = line[i];
+        if (i === n - 1 || (i + 1) % k === 0) suf[i] = v;
+        else { const s = suf[i + 1]; suf[i] = sign * v > sign * s ? v : s; }
+      }
+      for (let x = 0; x < count; x += 1) {
+        const a = suf[x];
+        const b = pre[x + k - 1];
+        result[x] = sign * a > sign * b ? a : b;
+      }
+    };
     for (let y = 0; y < h; y += 1) {
       const row = y * w;
-      for (let x = 0; x < w; x += 1) {
-        const x0 = x - r < 0 ? 0 : x - r;
-        const x1 = x + r >= w ? w - 1 : x + r;
-        let v = src[row + x0];
-        if (isMax) { for (let k = x0 + 1; k <= x1; k += 1) if (src[row + k] > v) v = src[row + k]; }
-        else { for (let k = x0 + 1; k <= x1; k += 1) if (src[row + k] < v) v = src[row + k]; }
-        tmp[row + x] = v;
-      }
+      const n = w + 2 * r;
+      for (let i = 0; i < n; i += 1) { const x = i - r; line[i] = x < 0 || x >= w ? pad : src[row + x]; }
+      filter(n, w);
+      for (let x = 0; x < w; x += 1) tmp[row + x] = result[x];
     }
     for (let x = 0; x < w; x += 1) {
-      for (let y = 0; y < h; y += 1) {
-        const y0 = y - r < 0 ? 0 : y - r;
-        const y1 = y + r >= h ? h - 1 : y + r;
-        let v = tmp[y0 * w + x];
-        if (isMax) { for (let k = y0 + 1; k <= y1; k += 1) if (tmp[k * w + x] > v) v = tmp[k * w + x]; }
-        else { for (let k = y0 + 1; k <= y1; k += 1) if (tmp[k * w + x] < v) v = tmp[k * w + x]; }
-        out[y * w + x] = v;
-      }
+      const n = h + 2 * r;
+      for (let i = 0; i < n; i += 1) { const y = i - r; line[i] = y < 0 || y >= h ? pad : tmp[y * w + x]; }
+      filter(n, h);
+      for (let y = 0; y < h; y += 1) out[y * w + x] = result[y];
     }
     return out;
   }
@@ -181,11 +217,91 @@
     return out;
   }
 
+  // Local "busyness": the spread (standard deviation) of brightness in a (2r+1)² window. A page with its text
+  // wiped out is calm; striped, checked, flowery or woven sheets are busy. Box sums are running sums, so the
+  // cost doesn't depend on the radius.
+  function scanTexture(img, w, h, r) {
+    const n = w * h;
+    const boxSum = (src) => {
+      const tmp = new Float64Array(n);
+      const out = new Float64Array(n);
+      for (let y = 0; y < h; y += 1) {
+        const row = y * w;
+        let s = 0;
+        for (let x = -r; x <= r; x += 1) s += src[row + (x < 0 ? 0 : x >= w ? w - 1 : x)];
+        for (let x = 0; x < w; x += 1) {
+          tmp[row + x] = s;
+          const add = x + r + 1;
+          const sub = x - r;
+          s += src[row + (add >= w ? w - 1 : add)] - src[row + (sub < 0 ? 0 : sub)];
+        }
+      }
+      for (let x = 0; x < w; x += 1) {
+        let s = 0;
+        for (let y = -r; y <= r; y += 1) s += tmp[(y < 0 ? 0 : y >= h ? h - 1 : y) * w + x];
+        for (let y = 0; y < h; y += 1) {
+          out[y * w + x] = s;
+          const add = y + r + 1;
+          const sub = y - r;
+          s += tmp[(add >= h ? h - 1 : add) * w + x] - tmp[(sub < 0 ? 0 : sub) * w + x];
+        }
+      }
+      return out;
+    };
+    const squares = new Float64Array(n);
+    for (let i = 0; i < n; i += 1) squares[i] = img[i] * img[i];
+    const sum = boxSum(img);
+    const sum2 = boxSum(squares);
+    const count = (2 * r + 1) * (2 * r + 1);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i += 1) {
+      const mean = sum[i] / count;
+      const v = sum2[i] / count - mean * mean;
+      out[i] = v > 0 ? Math.sqrt(v) : 0;
+    }
+    return out;
+  }
+
+  // The same quad with every side pushed outward by d pixels (corners kept inside the w×h image).
+  function scanGrowQuad(quad, d, w, h) {
+    const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+    const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+    const lines = [];
+    for (let i = 0; i < 4; i += 1) {
+      const p = quad[i];
+      const q = quad[(i + 1) % 4];
+      const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+      let nx = -(q[1] - p[1]) / len;
+      let ny = (q[0] - p[0]) / len;
+      if (((p[0] + q[0]) / 2 - cx) * nx + ((p[1] + q[1]) / 2 - cy) * ny < 0) { nx = -nx; ny = -ny; }
+      lines.push([[p[0] + nx * d, p[1] + ny * d], [q[0] + nx * d, q[1] + ny * d]]);
+    }
+    const out = [];
+    for (let i = 0; i < 4; i += 1) {
+      const [a1, a2] = lines[(i + 3) % 4];
+      const [b1, b2] = lines[i];
+      const den = (a1[0] - a2[0]) * (b1[1] - b2[1]) - (a1[1] - a2[1]) * (b1[0] - b2[0]);
+      if (Math.abs(den) < 1e-9) return null;
+      const pa = a1[0] * a2[1] - a1[1] * a2[0];
+      const pb = b1[0] * b2[1] - b1[1] * b2[0];
+      out.push([
+        Math.min(w - 1, Math.max(0, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
+        Math.min(h - 1, Math.max(0, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
+      ]);
+    }
+    return out;
+  }
+
   // Canny-style edges: Sobel gradients, thinned to 1px, then keep strong edges plus weak ones touching them.
-  function scanEdges(img, w, h) {
+  // Returns the edge mask plus each pixel's gradient direction (0..π), used to match edges to page sides.
+  // `keep` = share of edge pixels counted as "strong" (higher = more sensitive to faint edges).
+  function scanEdges(img, w, h, keep, cap) {
     const n = w * h;
     const mag = new Float32Array(n);
     const dir = new Uint8Array(n);
+    const angle = new Float32Array(n);
+    const gxs = new Float32Array(n);
+    const gys = new Float32Array(n);
     for (let y = 1; y < h - 1; y += 1) {
       for (let x = 1; x < w - 1; x += 1) {
         const i = y * w + x;
@@ -197,6 +313,8 @@
         const ax = gx < 0 ? -gx : gx;
         const ay = gy < 0 ? -gy : gy;
         mag[i] = ax + ay;
+        gxs[i] = gx;
+        gys[i] = gy;
         if (ay <= ax * 0.4142) dir[i] = 0;
         else if (ay >= ax * 2.4142) dir[i] = 2;
         else dir[i] = (gx > 0) === (gy > 0) ? 1 : 3;
@@ -222,9 +340,10 @@
       }
     }
     const edges = new Uint8Array(n);
-    if (maxMag === 0) return edges;
+    if (maxMag === 0) return { edges, angle };
 
-    // Thresholds adapt to each photo: "strong" = the top 10% of edge pixels (never below a noise floor).
+    // Thresholds adapt to each photo: "strong" = the top `keep` share of edge pixels (never below a noise floor).
+    const strongShare = keep || 0.1;
     const bins = 512;
     const hist = new Uint32Array(bins);
     let count = 0;
@@ -238,9 +357,11 @@
     let cut = bins - 1;
     for (let b = 0; b < bins; b += 1) {
       acc += hist[b];
-      if (acc >= count * 0.9) { cut = b; break; }
+      if (acc >= count * (1 - strongShare)) { cut = b; break; }
     }
-    const high = Math.max(((cut + 1) / (bins - 1)) * maxMag, 24);
+    // `cap`: on a bold print (stripes, checks) the top share is all pattern and would push a page's softer
+    // edge below the cut; capping the threshold keeps any clear step (≈ a 15-level brightness change).
+    const high = Math.max(Math.min(((cut + 1) / (bins - 1)) * maxMag, cap || Infinity), 18);
     const low = high * 0.45;
 
     const stack = new Int32Array(n);
@@ -261,7 +382,14 @@
         }
       }
     }
-    return edges;
+    // Direction (0..π) only where there is an edge: atan2 is costly.
+    for (let i = 0; i < n; i += 1) {
+      if (!edges[i]) continue;
+      let a = Math.atan2(gys[i], gxs[i]);
+      if (a < 0) a += Math.PI;
+      angle[i] = a;
+    }
+    return { edges, angle };
   }
 
   // Thicken a 0/1 mask by one pixel in every direction.
@@ -426,14 +554,17 @@
     return best;
   }
 
-  // Order corners as top-left, top-right, bottom-right, bottom-left.
+  // Order corners clockwise as top-left, top-right, bottom-right, bottom-left. The "top" side is the one
+  // whose middle sits highest in the photo, which works at any rotation (diagonal shots included).
   function scanOrder(quad) {
     const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
     const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
     const sorted = quad.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
     let start = 0;
-    for (let i = 1; i < 4; i += 1) {
-      if (sorted[i][0] + sorted[i][1] < sorted[start][0] + sorted[start][1]) start = i;
+    let highest = Infinity;
+    for (let i = 0; i < 4; i += 1) {
+      const midY = (sorted[i][1] + sorted[(i + 1) % 4][1]) / 2;
+      if (midY < highest) { highest = midY; start = i; }
     }
     return [0, 1, 2, 3].map((k) => sorted[(start + k) % 4]);
   }
@@ -453,11 +584,231 @@
     return quad ? scanOrder(quad) : null;
   }
 
-  // How believable is this quad as a page? 0 = reject. Needs a sensible shape and real edges along its sides.
-  function scanScoreQuad(quad, support, w, h) {
+  // How believable is this quad as a page? 0 = reject. Three kinds of evidence:
+  //  1. shape: convex, corner angles 30°–150° (tilted/diagonal shots), sensible proportions;
+  //  2. every side sits on a real edge running the same way as the side, and/or has a steady
+  //     brightness/colour step across it (catches faint white-on-white edges);
+  //  3. inside looks like plain paper (text is already wiped out of `lum`/`paper`): few edges and one
+  //     even tone. This is what rejects big rectangles traced along bedsheet stripes, checks and dots.
+  // Evidence that the segment p→q is a page side (outward = away from cx,cy). Returns
+  // { side (0..1), edgeRatio, steady, border } — direction-matched edges and a steady step across it.
+  function scanSideEvidence(p, q, cx, cy, ctx, sampleCount) {
+    const { w, h, edges, angle, lum, paper } = ctx;
+    const read = (arr, x, y) => arr[(y < 0 ? 0 : y >= h ? h - 1 : y | 0) * w + (x < 0 ? 0 : x >= w ? w - 1 : x | 0)];
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+    const tx = (q[0] - p[0]) / len;
+    const ty = (q[1] - p[1]) / len;
+    let nx = -ty;
+    let ny = tx;
+    if (((p[0] + q[0]) / 2 - cx) * nx + ((p[1] + q[1]) / 2 - cy) * ny < 0) { nx = -nx; ny = -ny; } // outward
+    let normalAngle = Math.atan2(ny, nx);
+    if (normalAngle < 0) normalAngle += Math.PI;
+    const samples = sampleCount || Math.max(12, Math.min(48, Math.round(len / 3)));
+    let counted = 0;
+    let border = 0;
+    let hits = 0;
+    let posL = 0; let negL = 0; let posP = 0; let negP = 0;
+    let stepped = 0;
+    let sharp = 0;
+    let banded = 0;
+    for (let k = 0; k < samples; k += 1) {
+      const t = 0.06 + (0.88 * (k + 0.5)) / samples;
+      const sx = p[0] + (q[0] - p[0]) * t;
+      const sy = p[1] + (q[1] - p[1]) * t;
+      if (sx < 3 || sy < 3 || sx > w - 4 || sy > h - 4) { border += 1; continue; } // page runs off the photo
+      counted += 1;
+      {
+        // Paper edges are sharp; shadow edges fade over many pixels. Compare the biggest local step with the
+        // total change over ±12 px, on the text-free image (text lines would look "sharp" otherwise).
+        let far = 0;
+        for (let o = 9; o <= 12; o += 1) far += read(lum, sx + nx * o, sy + ny * o) - read(lum, sx - nx * o, sy - ny * o);
+        const totalStep = Math.abs(far / 4);
+        if (totalStep > 8) {
+          stepped += 1;
+          let biggest = 0;
+          for (let o = -6; o <= 6; o += 1) {
+            const d = Math.abs(read(lum, sx + nx * (o + 1), sy + ny * (o + 1)) - read(lum, sx + nx * (o - 1), sy + ny * (o - 1))) / 2;
+            if (d > biggest) biggest = d;
+          }
+          if (biggest >= totalStep * 0.15) sharp += 1;
+        }
+      }
+      for (let o = -6; o <= 6; o += 1) { // ±6 px allows for curled paper
+        const x = Math.round(sx + nx * o);
+        const y = Math.round(sy + ny * o);
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const j = y * w + x;
+        if (!edges[j]) continue;
+        let d = Math.abs(angle[j] - normalAngle);
+        if (d > Math.PI / 2) d = Math.PI - d;
+        if (d < 0.35) { hits += 1; break; } // an edge running along the side (within 20°)
+      }
+      const inL = (read(lum, sx - nx * 3, sy - ny * 3) + read(lum, sx - nx * 6, sy - ny * 6)) / 2;
+      const outL = (read(lum, sx + nx * 3, sy + ny * 3) + read(lum, sx + nx * 6, sy + ny * 6)) / 2;
+      // Paper → ink-dark band → paper again: a header bar or thick printed line INSIDE the page, not its edge.
+      // (Ink is far darker than a page's own drop shadow, so a real edge on a white sheet doesn't trigger this.)
+      let darkest = 255;
+      for (let o = 3; o <= 11; o += 2) darkest = Math.min(darkest, read(lum, sx + nx * o, sy + ny * o));
+      if (inL - darkest >= 120) {
+        for (let o = 14; o <= 38; o += 4) {
+          if (Math.abs(read(lum, sx + nx * o, sy + ny * o) - inL) <= 20) { banded += 1; break; }
+        }
+      }
+      const inP = (read(paper, sx - nx * 3, sy - ny * 3) + read(paper, sx - nx * 6, sy - ny * 6)) / 2;
+      const outP = (read(paper, sx + nx * 3, sy + ny * 3) + read(paper, sx + nx * 6, sy + ny * 6)) / 2;
+      if (inL - outL >= 6) posL += 1; else if (outL - inL >= 6) negL += 1;
+      if (inP - outP >= 6) posP += 1; else if (outP - inP >= 6) negP += 1;
+    }
+    const borderShare = border / samples;
+    if (counted < 4) return { side: 0.5, edgeRatio: 0, steady: 0, border: borderShare };
+    const edgeRatio = hits / counted;
+    const steady = Math.max(posL, negL, posP, negP) / counted;
+    let side = Math.max(edgeRatio, steady) * 0.7 + Math.min(edgeRatio, steady) * 0.3;
+    const crisp = stepped >= 4 ? sharp / stepped : 1; // mostly soft steps = probably a shadow line, not a page edge
+    side *= 0.55 + 0.45 * crisp;
+    const bandShare = banded / counted;
+    if (bandShare >= 0.35) side *= 1 - 0.6 * bandShare; // a printed band inside the page, not the page edge
+    side = side * (1 - borderShare) + 0.5 * borderShare;
+    return { side, edgeRatio, steady, crisp, border: borderShare };
+  }
+
+  // Nudge each side of a near-miss onto the strongest evidence nearby (shift ±8 px, tilt ±4°),
+  // then rebuild the corners from the 4 adjusted lines. Turns a 1–3% near-miss into an exact fit.
+  function scanSnapQuad(quad, ctx) {
+    const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+    const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+    const lines = [];
+    for (let i = 0; i < 4; i += 1) {
+      const p = quad[i];
+      const q = quad[(i + 1) % 4];
+      const mx = (p[0] + q[0]) / 2;
+      const my = (p[1] + q[1]) / 2;
+      const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+      const nx = -(q[1] - p[1]) / len;
+      const ny = (q[0] - p[0]) / len;
+      let best = null;
+      let bestSide = -1;
+      let bestDeg = 0;
+      let bestD = 0;
+      const tryMove = (deg, d) => {
+        const a = (deg * Math.PI) / 180;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        const turn = (pt) => {
+          const dx = pt[0] - mx;
+          const dy = pt[1] - my;
+          return [mx + dx * c - dy * s + nx * d, my + dx * s + dy * c + ny * d];
+        };
+        const p2 = turn(p);
+        const q2 = turn(q);
+        const ev = scanSideEvidence(p2, q2, cx, cy, ctx).side - (Math.abs(d) + Math.abs(deg)) * 0.002; // prefer small moves
+        if (ev > bestSide) { bestSide = ev; best = [p2, q2]; bestDeg = deg; bestD = d; }
+      };
+      // coarse search, then fine search around the best coarse move
+      for (const deg of [-4, 0, 4]) for (const d of [-8, -4, 0, 4, 8]) tryMove(deg, d);
+      const coarseDeg = bestDeg;
+      const coarseD = bestD;
+      for (const deg of [coarseDeg - 2, coarseDeg, coarseDeg + 2]) {
+        for (const d of [coarseD - 2, coarseD, coarseD + 2]) if (deg !== coarseDeg || d !== coarseD) tryMove(deg, d);
+      }
+      lines.push(best);
+    }
+    const out = [];
+    for (let i = 0; i < 4; i += 1) {
+      const [a1, a2] = lines[(i + 3) % 4];
+      const [b1, b2] = lines[i];
+      const den = (a1[0] - a2[0]) * (b1[1] - b2[1]) - (a1[1] - a2[1]) * (b1[0] - b2[0]);
+      if (Math.abs(den) < 1e-9) return quad;
+      const pa = a1[0] * a2[1] - a1[1] * a2[0];
+      const pb = b1[0] * b2[1] - b1[1] * b2[0];
+      out.push([
+        Math.min(ctx.w - 1, Math.max(0, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
+        Math.min(ctx.h - 1, Math.max(0, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
+      ]);
+    }
+    return scanOrder(out);
+  }
+
+  // If the outline includes a strip of background (e.g. bedsheet checks lined up with the page), slide each
+  // side inward and keep the move when the whole outline scores clearly better (the inside becomes plain paper).
+  function scanTightenQuad(quad, ctx, score) {
+    const meet = (a1, a2, b1, b2) => {
+      const den = (a1[0] - a2[0]) * (b1[1] - b2[1]) - (a1[1] - a2[1]) * (b1[0] - b2[0]);
+      if (Math.abs(den) < 1e-9) return null;
+      const pa = a1[0] * a2[1] - a1[1] * a2[0];
+      const pb = b1[0] * b2[1] - b1[1] * b2[0];
+      return [(pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den];
+    };
+    let best = quad;
+    let bestScore = score;
+    for (let pass = 0; pass < 2; pass += 1) {
+      let improved = false;
+      for (let i = 0; i < 4; i += 1) {
+        const q = best;
+        const p0 = q[i];
+        const p1 = q[(i + 1) % 4];
+        const prev = q[(i + 3) % 4];
+        const next = q[(i + 2) % 4];
+        const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+        let nx = -(p1[1] - p0[1]) / len;
+        let ny = (p1[0] - p0[0]) / len;
+        const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4;
+        const cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
+        const mx = (p0[0] + p1[0]) / 2;
+        const my = (p0[1] + p1[1]) / 2;
+        if ((cx - mx) * nx + (cy - my) * ny < 0) { nx = -nx; ny = -ny; } // inward
+        const across = Math.abs(((prev[0] + next[0]) / 2 - mx) * nx + ((prev[1] + next[1]) / 2 - my) * ny);
+        let found = null;
+        let foundScore = bestScore * 1.03;
+        let foundD = 0;
+        const tryShift = (d, deg) => {
+            // shift the side inward by d, tilting it slightly about its middle
+            const r = (deg * Math.PI) / 180;
+            const cs = Math.cos(r);
+            const sn = Math.sin(r);
+            const smx = mx + nx * d;
+            const smy = my + ny * d;
+            const hx = (p1[0] - p0[0]) / 2;
+            const hy = (p1[1] - p0[1]) / 2;
+            const a = [smx - (hx * cs - hy * sn), smy - (hx * sn + hy * cs)];
+            const b = [smx + (hx * cs - hy * sn), smy + (hx * sn + hy * cs)];
+            const c0 = meet(prev, p0, a, b);
+            const c1 = meet(p1, next, a, b);
+            if (!c0 || !c1) return;
+            const cand = q.slice();
+            cand[i] = c0;
+            cand[(i + 1) % 4] = c1;
+            const s = scanScoreQuad(cand, ctx);
+            if (s > foundScore) { foundScore = s; found = cand; foundD = d; }
+        };
+        // coarse: straight shifts every 4 px; then fine: ±2 px and ±2° around the best one
+        for (let d = 4; d <= across * 0.3; d += 4) tryShift(d, 0);
+        if (found) {
+          const base = foundD;
+          for (const d of [base - 2, base, base + 2]) for (const deg of [-2, 2]) tryShift(d, deg);
+          tryShift(base - 2, 0);
+          tryShift(base + 2, 0);
+        }
+        if (found) { best = found; bestScore = foundScore; improved = true; }
+      }
+      if (!improved) break;
+    }
+    return { quad: best, score: bestScore };
+  }
+
+  // ctx = { w, h, edges, angle, lum, paper }. `info` (optional, for testing) receives the reasons.
+  // `sideMin` = how strong every side must be (lower values give a "soft" score used to rank near-misses).
+  // `quick` = a cheap first pass (few samples per side, no inside check) used to shortlist candidates.
+  function scanScoreQuad(quad, ctx, info, sideMin, quick) {
+    const minSideScore = sideMin == null ? 0.45 : sideMin;
+    const w = ctx.w;
+    const h = ctx.h;
     const imageArea = w * h;
     const area = scanArea(quad);
-    if (area < imageArea * 0.15) return 0;
+    const reject = (why) => { if (info) info.reason = why; return 0; };
+    if (area < imageArea * 0.08 || area > imageArea * 0.985) return reject('area');
+    const minSide = Math.min(w, h) * 0.06;
+    const lens = [];
     let sign = 0;
     for (let i = 0; i < 4; i += 1) {
       const p = quad[i];
@@ -467,44 +818,143 @@
       const vx = next[0] - p[0]; const vy = next[1] - p[1];
       const lu = Math.hypot(ux, uy);
       const lv = Math.hypot(vx, vy);
-      if (lu < 8 || lv < 8) return 0;
+      if (lu < minSide || lv < minSide) return reject('short side');
       const cos = (ux * vx + uy * vy) / (lu * lv);
-      if (cos > 0.7072 || cos < -0.7072) return 0; // corner angle must be 45°–135°
+      if (cos > 0.866 || cos < -0.866) return reject('angle'); // corner angle must be 30°–150°
       const cross = ux * vy - uy * vx;
       const s = cross > 0 ? 1 : -1;
-      if (sign && s !== sign) return 0; // not convex
+      if (sign && s !== sign) return reject('not convex');
       sign = s;
+      lens.push(lv);
     }
-    // Every side must sit on a real edge (or run along the photo's border, where the page is cut off).
-    // The weakest side counts most: on busy backgrounds, random clutter gives wrong lines partial support.
+    if (Math.min(lens[0], lens[2]) < Math.max(lens[0], lens[2]) * 0.3) return reject('proportions');
+    if (Math.min(lens[1], lens[3]) < Math.max(lens[1], lens[3]) * 0.3) return reject('proportions');
+    if (info) info.sides = [];
+
+    const { edges, paper } = ctx;
+    const clampX = (x) => (x < 0 ? 0 : x >= w ? w - 1 : x | 0);
+    const clampY = (y) => (y < 0 ? 0 : y >= h ? h - 1 : y | 0);
+    const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+    const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+
     let weakest = 1;
+    let total = 0;
     let realSides = 0;
     for (let i = 0; i < 4; i += 1) {
-      const p = quad[i];
-      const q = quad[(i + 1) % 4];
-      const steps = Math.max(8, Math.round(Math.hypot(q[0] - p[0], q[1] - p[1]) / 2));
-      let onEdge = 0;
-      let onBorder = 0;
-      for (let s = 0; s < steps; s += 1) {
-        const t = (s + 0.5) / steps;
-        const x = Math.round(p[0] + (q[0] - p[0]) * t);
-        const y = Math.round(p[1] + (q[1] - p[1]) * t);
-        if (x >= 0 && y >= 0 && x < w && y < h && support[y * w + x] === 1) onEdge += 1;
-        else if (x <= 3 || y <= 3 || x >= w - 4 || y >= h - 4) onBorder += 1;
-      }
-      const edgeRatio = onEdge / steps;
-      const sideScore = edgeRatio + 0.75 * (onBorder / steps);
-      if (sideScore < 0.6) return 0;
-      if (edgeRatio >= 0.6) realSides += 1;
-      if (sideScore < weakest) weakest = sideScore;
+      const ev = scanSideEvidence(quad[i], quad[(i + 1) % 4], cx, cy, ctx, quick ? 10 : 0);
+      if (ev.border < 0.5 && (ev.edgeRatio >= 0.5 || ev.steady >= 0.6)) realSides += 1;
+      if (info) info.sides.push(`e${ev.edgeRatio.toFixed(2)} c${ev.steady.toFixed(2)} s${(ev.crisp == null ? 1 : ev.crisp).toFixed(2)}`);
+      if (ev.side < minSideScore) return reject(`weak side ${i}`);
+      if (ev.side < weakest) weakest = ev.side;
+      total += ev.side;
     }
-    if (realSides < 2) return 0;
-    return (area / imageArea) * weakest * weakest * weakest;
+    if (realSides < 2) return reject('too few real sides');
+    ctx.lastWeakest = weakest;
+    if (quick) return Math.pow(area / imageArea, 0.35) * weakest * weakest * (total / 4);
+
+    // Inside: sample a 16×16 grid (bilinear over the quad, skipping the outer 10%). Plain paper is smooth
+    // even under a shadow (tones change gradually); a sheet's pattern makes neighbouring samples jump.
+    const grid = 16;
+    const values = new Float32Array(grid * grid);
+    let edgeHits = 0;
+    for (let gy = 0; gy < grid; gy += 1) {
+      const v = 0.1 + (0.8 * (gy + 0.5)) / grid;
+      for (let gx = 0; gx < grid; gx += 1) {
+        const u = 0.1 + (0.8 * (gx + 0.5)) / grid;
+        const topX = quad[0][0] + (quad[1][0] - quad[0][0]) * u;
+        const topY = quad[0][1] + (quad[1][1] - quad[0][1]) * u;
+        const botX = quad[3][0] + (quad[2][0] - quad[3][0]) * u;
+        const botY = quad[3][1] + (quad[2][1] - quad[3][1]) * u;
+        const x = clampX(topX + (botX - topX) * v);
+        const y = clampY(topY + (botY - topY) * v);
+        values[gy * grid + gx] = paper[y * w + x];
+        let edge = 0;
+        for (let dy = -1; dy <= 1 && !edge; dy += 1) {
+          for (let dx = -1; dx <= 1; dx += 1) {
+            if (edges[clampY(y + dy) * w + clampX(x + dx)]) { edge = 1; break; }
+          }
+        }
+        edgeHits += edge;
+      }
+    }
+    let calm = 0;
+    let pairs = 0;
+    for (let gy = 0; gy < grid; gy += 1) {
+      for (let gx = 0; gx < grid; gx += 1) {
+        const v = values[gy * grid + gx];
+        if (gx + 1 < grid) { pairs += 1; if (Math.abs(v - values[gy * grid + gx + 1]) <= 10) calm += 1; }
+        if (gy + 1 < grid) { pairs += 1; if (Math.abs(v - values[(gy + 1) * grid + gx]) <= 10) calm += 1; }
+      }
+    }
+    const smooth = calm / pairs;
+    const edgeDensity = edgeHits / (grid * grid);
+
+    // Rings just inside each side (4% and 8% in): on a real page this is plain margin. If the outline also
+    // took in a strip of bedsheet, the rings cross the true page edge and the pattern.
+    const sorted = Array.from(values).sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    let ringGood = 0;
+    let ringAll = 0;
+    for (const inset of [0.04, 0.08]) {
+      for (let i = 0; i < 4; i += 1) {
+        let last = null;
+        for (let k = 0; k < 20; k += 1) {
+          const t = 0.1 + (0.8 * (k + 0.5)) / 20;
+          // point along side i, moved `inset` of the way toward the opposite side
+          const a = quad[i];
+          const b = quad[(i + 1) % 4];
+          const c = quad[(i + 2) % 4];
+          const d = quad[(i + 3) % 4];
+          const ex = a[0] + (b[0] - a[0]) * t;
+          const ey = a[1] + (b[1] - a[1]) * t;
+          const ox = d[0] + (c[0] - d[0]) * t;
+          const oy = d[1] + (c[1] - d[1]) * t;
+          const x = clampX(ex + (ox - ex) * inset);
+          const y = clampY(ey + (oy - ey) * inset);
+          const v = paper[y * w + x];
+          ringAll += 1;
+          // Shadows change the tone gradually (allowed); patterns and the true page edge make sudden jumps.
+          if (Math.abs(v - median) <= 70 && (last === null || Math.abs(v - last) <= 10)) ringGood += 1;
+          last = v;
+        }
+      }
+    }
+    const ring = ringGood / ringAll;
+    // Margins: just inside every side (4–8 px) there should be paper. A side that runs along a stripe or check
+    // line beside the page instead has a wedge of bedsheet just inside it, for much of its length.
+    let marginWeakest = 1;
+    if (median > 60) {
+      for (let i = 0; i < 4; i += 1) {
+        const p = quad[i];
+        const q = quad[(i + 1) % 4];
+        const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+        let nx = -(q[1] - p[1]) / len;
+        let ny = (q[0] - p[0]) / len;
+        if (((p[0] + q[0]) / 2 - cx) * nx + ((p[1] + q[1]) / 2 - cy) * ny > 0) { nx = -nx; ny = -ny; } // inward
+        let good = 0;
+        let all = 0;
+        for (let k = 0; k < 24; k += 1) {
+          const t = 0.08 + (0.84 * (k + 0.5)) / 24;
+          const sx = p[0] + (q[0] - p[0]) * t;
+          const sy = p[1] + (q[1] - p[1]) * t;
+          if (sx < 3 || sy < 3 || sx > w - 4 || sy > h - 4) continue; // the photo cuts this part of the page off
+          all += 1;
+          const v = (paper[clampY(sy + ny * 4) * w + clampX(sx + nx * 4)] + paper[clampY(sy + ny * 8) * w + clampX(sx + nx * 8)]) / 2;
+          if (v >= median * 0.6) good += 1;
+        }
+        if (all >= 6 && good / all < marginWeakest) marginWeakest = good / all;
+      }
+    }
+    const margin = Math.min(1, marginWeakest / 0.85);
+    const inside = Math.pow(smooth, 2) * Math.pow(ring, 1.5) * (1 - Math.min(0.6, edgeDensity * 1.5)) * margin * margin;
+    if (info) Object.assign(info, { weakest, mean: total / 4, smooth, ring, edgeDensity, margin, inside, areaShare: area / imageArea });
+    return Math.pow(area / imageArea, 0.35) * weakest * weakest * (total / 4) * inside;
   }
 
-  // Straight-line finder (Hough transform). Builds page candidates from 2 near-horizontal and
-  // 2 near-vertical lines, so clutter touching the page edge can't bend the outline.
-  function scanHoughQuads(edges, w, h) {
+  // Straight-line finder (Hough transform). Each edge pixel only votes for lines running the way its own
+  // edge runs (±3°), which is fast and ignores most texture. Lines from several edge maps are merged.
+  // Returns up to 18 lines as [votes, angleDegrees, rho] (x·cosθ + y·sinθ = rho).
+  function scanHoughLines(maps, w, h) {
     const diag = Math.ceil(Math.hypot(w, h));
     const nTheta = 180;
     const nRho = diag * 2 + 1;
@@ -514,68 +964,157 @@
       cos[t] = Math.cos((t * Math.PI) / 180);
       sin[t] = Math.sin((t * Math.PI) / 180);
     }
-    const acc = new Int32Array(nTheta * nRho);
-    for (let y = 0; y < h; y += 1) {
-      for (let x = 0; x < w; x += 1) {
-        if (!edges[y * w + x]) continue;
-        for (let t = 0; t < nTheta; t += 1) acc[t * nRho + Math.round(x * cos[t] + y * sin[t]) + diag] += 1;
-      }
-    }
-    const minVotes = Math.round(Math.min(w, h) * 0.12);
-    const peaks = [];
-    for (let t = 0; t < nTheta; t += 1) {
-      for (let r = 1; r < nRho - 1; r += 1) {
-        const v = acc[t * nRho + r];
-        if (v < minVotes) continue;
-        let isPeak = true;
-        for (let dt = -1; dt <= 1 && isPeak; dt += 1) {
-          const tt = (t + dt + nTheta) % nTheta;
-          for (let dr = -1; dr <= 1; dr += 1) {
-            if ((dt || dr) && acc[tt * nRho + r + dr] > v) { isPeak = false; break; }
-          }
-        }
-        if (isPeak) peaks.push([v, t, r - diag]);
-      }
-    }
-    peaks.sort((a, b) => b[0] - a[0]);
-    const lines = [];
-    for (const p of peaks) {
-      if (lines.length >= 24) break;
-      const near = lines.some((l) => {
-        const dt = Math.abs(l[1] - p[1]);
-        if (dt <= 4) return Math.abs(l[2] - p[2]) <= 10;
-        if (180 - dt <= 4) return Math.abs(l[2] + p[2]) <= 10; // same line seen from the other side
-        return false;
-      });
-      if (!near) lines.push(p);
-    }
-    const horizontal = lines.filter((l) => l[1] >= 45 && l[1] <= 135).slice(0, 10);
-    const vertical = lines.filter((l) => l[1] < 45 || l[1] > 135).slice(0, 10);
-    const meet = (a, b) => {
-      const c1 = cos[a[1]]; const s1 = sin[a[1]];
-      const c2 = cos[b[1]]; const s2 = sin[b[1]];
-      const det = c1 * s2 - s1 * c2;
-      if (Math.abs(det) < 1e-6) return null;
-      return [(a[2] * s2 - b[2] * s1) / det, (c1 * b[2] - c2 * a[2]) / det];
+    const near = (a, b) => {
+      const dt = Math.abs(a[1] - b[1]);
+      if (dt <= 3) return Math.abs(a[2] - b[2]) <= 8;
+      if (180 - dt <= 3) return Math.abs(a[2] + b[2]) <= 8; // the same line seen from the other side
+      return false;
     };
-    const slackX = w * 0.03;
-    const slackY = h * 0.03;
-    const quads = [];
-    for (let i = 0; i < horizontal.length; i += 1) {
-      for (let j = i + 1; j < horizontal.length; j += 1) {
-        for (let k = 0; k < vertical.length; k += 1) {
-          for (let l = k + 1; l < vertical.length; l += 1) {
-            const pts = [
-              meet(horizontal[i], vertical[k]), meet(horizontal[i], vertical[l]),
-              meet(horizontal[j], vertical[l]), meet(horizontal[j], vertical[k]),
-            ];
-            if (pts.some((p) => !p || p[0] < -slackX || p[1] < -slackY || p[0] > w - 1 + slackX || p[1] > h - 1 + slackY)) continue;
-            quads.push(scanOrder(pts.map((p) => [Math.min(w - 1, Math.max(0, p[0])), Math.min(h - 1, Math.max(0, p[1]))])));
+    const all = [];
+    const acc = new Int32Array(nTheta * nRho);
+    for (const map of maps) {
+      acc.fill(0);
+      const { edges, angle } = map;
+      for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+          const i = y * w + x;
+          if (!edges[i]) continue;
+          const t0 = Math.round((angle[i] * 180) / Math.PI) % 180;
+          for (let d = -3; d <= 3; d += 1) {
+            const t = (t0 + d + nTheta) % nTheta;
+            acc[t * nRho + Math.round(x * cos[t] + y * sin[t]) + diag] += 1;
           }
         }
+      }
+      const minVotes = Math.round(Math.min(w, h) * 0.1);
+      const peaks = [];
+      for (let t = 0; t < nTheta; t += 1) {
+        for (let r = 1; r < nRho - 1; r += 1) {
+          const v = acc[t * nRho + r];
+          if (v < minVotes) continue;
+          let isPeak = true;
+          for (let dt = -1; dt <= 1 && isPeak; dt += 1) {
+            const tt = (t + dt + nTheta) % nTheta;
+            for (let dr = -1; dr <= 1; dr += 1) {
+              if ((dt || dr) && acc[tt * nRho + r + dr] > v) { isPeak = false; break; }
+            }
+          }
+          if (isPeak) peaks.push([v, t, r - diag]);
+        }
+      }
+      peaks.sort((a, b) => b[0] - a[0]);
+      // At most 6 lines per 10° direction, so stripes or checks can't crowd out the page's own edges.
+      const perDirection = new Uint8Array(18);
+      let kept = 0;
+      for (const p of peaks) {
+        if (kept >= 24) break;
+        const bucket = Math.floor(p[1] / 10);
+        if (perDirection[bucket] >= 6 || all.some((l) => near(l, p))) continue;
+        perDirection[bucket] += 1;
+        all.push(p);
+        kept += 1;
+      }
+    }
+    all.sort((a, b) => b[0] - a[0]);
+    const lines = [];
+    const perDirection = new Uint8Array(18);
+    for (const p of all) {
+      if (lines.length >= 26) break;
+      const bucket = Math.floor(p[1] / 10);
+      if (perDirection[bucket] >= 7 || lines.some((l) => near(l, p))) continue;
+      perDirection[bucket] += 1;
+      lines.push(p);
+    }
+    return lines;
+  }
+
+  // Page candidates from lines, at any rotation: two "opposite side" pairs (lines within 30° of each other
+  // and well apart) whose directions differ by at least 35° give the 4 corners.
+  function scanQuadsFromLines(lines, w, h) {
+    const toRad = Math.PI / 180;
+    const L = lines.map((l) => ({ t: l[1], rho: l[2], c: Math.cos(l[1] * toRad), s: Math.sin(l[1] * toRad) }));
+    const angleGap = (a, b) => {
+      const d = Math.abs(a.t - b.t) % 180;
+      return Math.min(d, 180 - d);
+    };
+    const cx = w / 2;
+    const cy = h / 2;
+    const minGap = Math.min(w, h) * 0.12;
+    const pairs = [];
+    for (let i = 0; i < L.length; i += 1) {
+      for (let j = i + 1; j < L.length; j += 1) {
+        if (angleGap(L[i], L[j]) > 30) continue;
+        const di = cx * L[i].c + cy * L[i].s - L[i].rho;
+        let dj = cx * L[j].c + cy * L[j].s - L[j].rho;
+        if (L[i].c * L[j].c + L[i].s * L[j].s < 0) dj = -dj; // normals pointing opposite ways
+        if (Math.abs(di - dj) >= minGap) pairs.push([i, j]);
+      }
+    }
+    const meet = (a, b) => {
+      const det = a.c * b.s - a.s * b.c;
+      if (Math.abs(det) < 1e-6) return null;
+      return [(a.rho * b.s - b.rho * a.s) / det, (a.c * b.rho - b.c * a.rho) / det];
+    };
+    const slackX = w * 0.04;
+    const slackY = h * 0.04;
+    const quads = [];
+    for (let a = 0; a < pairs.length; a += 1) {
+      for (let b = a + 1; b < pairs.length; b += 1) {
+        const [i, j] = pairs[a];
+        const [k, l] = pairs[b];
+        if (i === k || i === l || j === k || j === l) continue;
+        if (angleGap(L[i], L[k]) < 35) continue;
+        const pts = [meet(L[i], L[k]), meet(L[i], L[l]), meet(L[j], L[l]), meet(L[j], L[k])];
+        if (pts.some((p) => !p || p[0] < -slackX || p[1] < -slackY || p[0] > w - 1 + slackX || p[1] > h - 1 + slackY)) continue;
+        quads.push(scanOrder(pts.map((p) => [Math.min(w - 1, Math.max(0, p[0])), Math.min(h - 1, Math.max(0, p[1]))])));
       }
     }
     return quads;
+  }
+
+  // Diagonal photos: if the page has text, make sure the text lines run across the page (not down it),
+  // turning the corner order a quarter turn if needed. Blank pages are left as they are.
+  function scanTextUpright(gray, w, h, quad) {
+    const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+    const across = (dist(quad[0], quad[1]) + dist(quad[3], quad[2])) / 2;
+    const down = (dist(quad[0], quad[3]) + dist(quad[1], quad[2])) / 2;
+    const scale = 200 / Math.max(across, down);
+    const ow = Math.max(24, Math.round(across * scale));
+    const oh = Math.max(24, Math.round(down * scale));
+    const H = solveHomography([[0, 0], [ow, 0], [ow, oh], [0, oh]], quad);
+    if (!H) return quad;
+    const patch = new Float32Array(ow * oh);
+    for (let y = 0; y < oh; y += 1) {
+      for (let x = 0; x < ow; x += 1) {
+        const z = H[6] * (x + 0.5) + H[7] * (y + 0.5) + 1;
+        const sx = Math.round((H[0] * (x + 0.5) + H[1] * (y + 0.5) + H[2]) / z);
+        const sy = Math.round((H[3] * (x + 0.5) + H[4] * (y + 0.5) + H[5]) / z);
+        patch[y * ow + x] = gray[(sy < 0 ? 0 : sy >= h ? h - 1 : sy) * w + (sx < 0 ? 0 : sx >= w ? w - 1 : sx)];
+      }
+    }
+    // How strongly do row averages (and column averages) change from one to the next? Text lines make rows jump.
+    const profileEnergy = (alongRows) => {
+      const outer = alongRows ? oh : ow;
+      const inner = alongRows ? ow : oh;
+      const from = Math.round(inner * 0.1);
+      const to = Math.round(inner * 0.9);
+      const means = [];
+      for (let a = Math.round(outer * 0.1); a < Math.round(outer * 0.9); a += 1) {
+        let sum = 0;
+        for (let b = from; b < to; b += 1) sum += alongRows ? patch[a * ow + b] : patch[b * ow + a];
+        means.push(sum / (to - from));
+      }
+      let energy = 0;
+      for (let k = 1; k < means.length; k += 1) energy += (means[k] - means[k - 1]) ** 2;
+      return energy / Math.max(1, means.length - 1);
+    };
+    const rows = profileEnergy(true);
+    const cols = profileEnergy(false);
+    if (!(cols > rows * 1.6 && cols > 4)) return quad;
+    const turnedA = [quad[1], quad[2], quad[3], quad[0]];
+    const turnedB = [quad[3], quad[0], quad[1], quad[2]];
+    const topY = (q) => (q[0][1] + q[1][1]) / 2;
+    return topY(turnedA) <= topY(turnedB) ? turnedA : turnedB;
   }
 
   function scanOtsu(img) {
@@ -603,22 +1142,49 @@
     return threshold;
   }
 
-  // Find the page in a small copy of the photo. Returns 4 corners as fractions (0..1) or null.
-  function detectDocument(imageData) {
+  // Find the page in a small copy of the photo.
+  // Returns { corners (4 fractions 0..1, TL TR BR BL), confident, score } or null.
+  // `confident: false` = a best guess: not applied automatically, but the corner editor starts from it.
+  function detectDocument(imageData, debug) {
+    const SCAN_CONFIDENT = 0.22; // tuned on ~150 test photos (kept inside: this function also runs in the workers)
+    const SCAN_GUESS = 0.05;
+    const times = debug ? {} : null; // optional timing for testing
+    let lastMark = debug ? performance.now() : 0;
+    const mark = (name) => { if (times) { const now = performance.now(); times[name] = Math.round((now - lastMark) * 10) / 10; lastMark = now; } };
     const w = imageData.width;
     const h = imageData.height;
     if (w < 32 || h < 32) return null;
     const n = w * h;
     const data = imageData.data;
+    // Brightness, and "paperness": bright AND colourless, which separates white paper from coloured sheets.
     const gray = new Float32Array(n);
-    for (let i = 0, j = 0; i < n; i += 1, j += 4) gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
-
-    const r = Math.max(2, Math.round(Math.max(w, h) / 128));
-    const clean = scanBlur(scanMinMax(scanMinMax(gray, w, h, r, true), w, h, r, false), w, h);
-    const edges = scanEdges(clean, w, h);
+    const paperRaw = new Float32Array(n);
+    for (let i = 0, j = 0; i < n; i += 1, j += 4) {
+      const r = data[j]; const g = data[j + 1]; const b = data[j + 2];
+      const L = r * 0.299 + g * 0.587 + b * 0.114;
+      const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+      gray[i] = L;
+      paperRaw[i] = Math.max(0, L - 1.5 * chroma);
+    }
+    // Wipe out text (thin dark marks), then smooth. The extra-smooth copy also melts fabric weave and small folds.
+    const radius = Math.max(2, Math.round(Math.max(w, h) / 128));
+    const lum = scanBlur(scanMinMax(scanMinMax(gray, w, h, radius, true), w, h, radius, false), w, h);
+    const paper = scanBlur(scanMinMax(scanMinMax(paperRaw, w, h, radius, true), w, h, radius, false), w, h);
+    const smooth = scanBlur(scanBlur(scanBlur(lum, w, h), w, h), w, h);
+    mark('prepare');
+    const EDGE_CAP = 60;
+    const maps = [scanEdges(lum, w, h, 0.1, EDGE_CAP), scanEdges(paper, w, h, 0.1, EDGE_CAP), scanEdges(smooth, w, h, 0.2, EDGE_CAP)];
+    mark('edges');
+    const edges = new Uint8Array(n);
+    const angle = new Float32Array(n);
+    for (let i = 0; i < n; i += 1) {
+      for (const map of maps) {
+        if (map.edges[i]) { edges[i] = 1; angle[i] = map.angle[i]; break; }
+      }
+    }
     const walls = scanDilate(edges, w, h);
-    const support = scanDilate(walls, w, h);
-    const minBox = n * 0.15;
+    const thick = scanDilate(walls, w, h);
+    const minBox = n * 0.1;
     const outlines = [];
 
     // 1. The area around the middle of the photo, fenced in by (thick) edges: usually the page itself.
@@ -628,13 +1194,13 @@
         seeds.push(Math.round(h / 2 + sy * h * 0.06) * w + Math.round(w / 2 + sx * w * 0.06));
       }
     }
-    scanRegions(support, w, h, 0, false, minBox, seeds).forEach((region) => outlines.push(region.points));
+    scanRegions(thick, w, h, 0, false, minBox, seeds).forEach((region) => outlines.push(region.points));
     // 2. Large connected edge outlines.
     scanRegions(walls, w, h, 1, true, minBox, null).forEach((region) => outlines.push(region.points));
-    // 3. Large bright areas (light paper on a darker surface).
-    const threshold = scanOtsu(clean);
+    // 3. Large "paper-like" areas (bright and colourless) — white paper on a coloured or darker sheet.
+    const threshold = scanOtsu(paper);
     const bright = new Uint8Array(n);
-    for (let i = 0; i < n; i += 1) bright[i] = clean[i] > threshold ? 1 : 0;
+    for (let i = 0; i < n; i += 1) bright[i] = paper[i] > threshold ? 1 : 0;
     scanRegions(bright, w, h, 1, false, minBox, null).forEach((region) => outlines.push(region.points));
 
     const quads = [];
@@ -642,16 +1208,91 @@
       const quad = scanQuadFromPoints(points);
       if (quad) quads.push(quad);
     }
-    // 4. Quads made from the strongest straight lines (handles busy backgrounds).
-    scanHoughQuads(edges, w, h).forEach((quad) => quads.push(quad));
+    // 4. A plain page on a patterned sheet (stripes, checks, flowers): the page is a calm area in a busy one,
+    //    even where its edge can't be seen (white page against the white parts of the print). The texture
+    //    window eats a strip along the page edge, so each outline is also tried pushed out by that much.
+    const textureRadius = Math.max(3, Math.round(Math.max(w, h) / 64));
+    const texture = scanTexture(lum, w, h, textureRadius);
+    const calm = new Uint8Array(n);
+    for (const level of [4, 8, 14]) {
+      for (let i = 0; i < n; i += 1) calm[i] = texture[i] < level ? 1 : 0;
+      for (const region of scanRegions(calm, w, h, 1, false, minBox * 0.6, null)) {
+        const quad = scanQuadFromPoints(region.points);
+        if (!quad) continue;
+        quads.push(quad);
+        const grown = scanGrowQuad(quad, textureRadius, w, h);
+        if (grown) quads.push(scanOrder(grown));
+      }
+    }
+    mark('regions');
+    // 4. Quads from straight lines at any angle (busy backgrounds, fingers over a corner, diagonal shots).
+    scanQuadsFromLines(scanHoughLines(maps, w, h), w, h).forEach((quad) => quads.push(quad));
+    mark('lines');
 
+    const ctx = { w, h, edges, angle, lum, paper, gray, lastWeakest: 0 };
     let best = null;
     let bestScore = 0;
-    for (const quad of quads) {
-      const score = scanScoreQuad(quad, support, w, h);
-      if (score > bestScore) { bestScore = score; best = quad; }
+    const consider = (quad, score) => { if (score > bestScore) { bestScore = score; best = quad; } };
+    // Quick pass over every candidate (few samples per side), then the full check on the 120 most promising.
+    let shortlist = quads;
+    if (quads.length > 120) {
+      const quick = [];
+      for (const quad of quads) {
+        const s = scanScoreQuad(quad, ctx, null, 0.15, true);
+        if (s > 0) quick.push([s, quad]);
+      }
+      quick.sort((a, b) => b[0] - a[0]);
+      shortlist = quick.slice(0, 120).map((entry) => entry[1]);
     }
-    return best ? best.map((p) => [(p[0] + 0.5) / w, (p[1] + 0.5) / h]) : null;
+    // Score candidates "softly" (one weak side allowed) so near-misses can be ranked and snapped.
+    const ranked = [];
+    for (const quad of shortlist) {
+      const soft = scanScoreQuad(quad, ctx, null, 0.2);
+      if (soft <= 0) continue;
+      ranked.push([soft, quad]);
+      if (ctx.lastWeakest >= 0.45) consider(quad, soft); // passes the strict check as it is
+    }
+    ranked.sort((a, b) => b[0] - a[0]);
+    mark(`score ${quads.length}`);
+    // If nothing passes the strict check, the best near-miss is still handed back as a guess for the editor.
+    let fallback = null;
+    let fallbackSoft = 0;
+    for (const [, quad] of ranked.slice(0, 12)) {
+      const snapped = scanSnapQuad(quad, ctx);
+      const strict = scanScoreQuad(snapped, ctx);
+      consider(snapped, strict);
+      if (!strict && !best) {
+        const soft = scanScoreQuad(snapped, ctx, null, 0.2);
+        if (soft > fallbackSoft) { fallbackSoft = soft; fallback = snapped; }
+      }
+    }
+    mark('snap');
+    if (best) {
+      const tight = scanTightenQuad(best, ctx, bestScore);
+      if (tight.quad !== best) {
+        const snapped = scanSnapQuad(tight.quad, ctx);
+        const snappedScore = scanScoreQuad(snapped, ctx);
+        if (snappedScore >= tight.score) { best = snapped; bestScore = snappedScore; } else { best = tight.quad; bestScore = tight.score; }
+      }
+    }
+    mark('tighten');
+    if (debug) Object.assign(debug, { ctx, quads, best, bestScore, gray, times, fallback, fallbackSoft });
+    if (!best || bestScore < SCAN_GUESS) {
+      // A weak near-miss: never applied by itself, only offered as the editor's starting outline.
+      // Its score stays below SCAN_GUESS so any real candidate (at another probe size) ranks above it.
+      if (!fallback || fallbackSoft < 0.1) return null;
+      return {
+        corners: scanTextUpright(gray, w, h, fallback).map((p) => [(p[0] + 0.5) / w, (p[1] + 0.5) / h]),
+        confident: false,
+        score: 0.01 + Math.min(1, fallbackSoft) * 0.03,
+      };
+    }
+    best = scanTextUpright(gray, w, h, best);
+    return {
+      corners: best.map((p) => [(p[0] + 0.5) / w, (p[1] + 0.5) / h]),
+      confident: bestScore >= SCAN_CONFIDENT,
+      score: bestScore,
+    };
   }
 
   // Homography (8 numbers) that maps 4 points `from` onto 4 points `to`.
@@ -810,18 +1451,35 @@
     return refined;
   }
 
-  // Find (or reuse) the page corners and return a straightened canvas, or null if no page was found.
+  // Find (or reuse) the page corners and return a straightened canvas. If no page is found with confidence,
+  // returns { canvas: null, guess } (guess = best near-miss corners for the editor, or null).
+  // Find the page in a photo (anything drawable). Looks at a 512 px copy first and, if that isn't sure, at a
+  // 360 px one too: on fine prints (thin stripes, small checks) the smaller copy melts the pattern while the
+  // page's edge stays sharp. The second look has to be clearly sure (score ≥ 0.3) to count as found.
+  // Returns detectDocument's best answer, or null.
+  function scanFind(source, srcW, srcH, makeCanvas) {
+    let best = null;
+    for (const [edge, mustReach] of [[512, 0], [360, 0.3]]) {
+      const small = fitWithin(srcW, srcH, edge);
+      const probe = makeCanvas(small.w, small.h);
+      const ctx = probe.getContext('2d', { willReadFrequently: true });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, small.w, small.h);
+      ctx.drawImage(source, 0, 0, small.w, small.h);
+      const found = detectDocument(ctx.getImageData(0, 0, small.w, small.h));
+      if (found && found.score < mustReach) found.confident = false;
+      if (found && (!best || found.score > best.score)) best = found;
+      if (best && best.confident) break;
+    }
+    return best;
+  }
+
   function scanImage(source, srcW, srcH, knownCorners, maxEdge, makeCanvas, refine, manual) {
     let corners = knownCorners;
     if (!corners) {
-      const small = fitWithin(srcW, srcH, 512);
-      const probe = makeCanvas(small.w, small.h);
-      const probeCtx = probe.getContext('2d', { willReadFrequently: true });
-      probeCtx.fillStyle = '#ffffff';
-      probeCtx.fillRect(0, 0, small.w, small.h);
-      probeCtx.drawImage(source, 0, 0, small.w, small.h);
-      corners = detectDocument(probeCtx.getImageData(0, 0, small.w, small.h));
-      if (!corners) return null;
+      const found = scanFind(source, srcW, srcH, makeCanvas);
+      if (!found || !found.confident) return { canvas: null, guess: found ? found.corners : null };
+      corners = found.corners;
     }
 
     const work = fitWithin(srcW, srcH, Math.round(maxEdge * 1.25));
@@ -916,10 +1574,14 @@
   // The image a PDF page is made from: the straightened page when scanning finds one (else the photo),
   // with the chosen look applied. `final` = already at its final size, ready to encode.
   function preparePage(source, srcW, srcH, opts, makeCanvas) {
-    let page = { source, w: srcW, h: srcH, scanned: false, corners: null, final: false };
+    let page = { source, w: srcW, h: srcH, scanned: false, corners: null, guess: null, final: false };
     if (opts.scan) {
       const result = scanImage(source, srcW, srcH, opts.corners || null, opts.maxEdge, makeCanvas, opts.refine, opts.manual);
-      if (result) page = { source: result.canvas, w: result.w, h: result.h, scanned: true, corners: result.corners, final: true };
+      if (result && result.canvas) {
+        page = { source: result.canvas, w: result.w, h: result.h, scanned: true, corners: result.corners, guess: null, final: true };
+      } else if (result) {
+        page.guess = result.guess;
+      }
     }
     const styled = opts.look === 'enhanced' || opts.look === 'bw';
     if (styled) {
@@ -931,7 +1593,7 @@
         ctx.fillRect(0, 0, size.w, size.h);
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(page.source, 0, 0, size.w, size.h);
-        page = { source: canvas, w: size.w, h: size.h, scanned: page.scanned, corners: page.corners, final: true };
+        page = { source: canvas, w: size.w, h: size.h, scanned: page.scanned, corners: page.corners, guess: page.guess, final: true };
       }
       applyLook(page.source, page.w, page.h, opts.look, makeCanvas);
     }
@@ -940,12 +1602,66 @@
   }
 
   const SCAN_FUNCTIONS = [
-    scanMinMax, scanBlur, scanEdges, scanDilate, scanRegions, scanHull, scanDP, scanSimplifyClosed,
-    scanArea, scanBestQuad, scanOrder, scanQuadFromPoints, scanScoreQuad, scanHoughQuads, scanOtsu, detectDocument,
+    scanMinMax, scanBlur, scanTexture, scanGrowQuad, scanEdges, scanDilate, scanRegions, scanHull, scanDP, scanSimplifyClosed,
+    scanArea, scanBestQuad, scanOrder, scanQuadFromPoints, scanSideEvidence, scanSnapQuad, scanTightenQuad, scanScoreQuad,
+    scanHoughLines, scanQuadsFromLines,
+    scanTextUpright, scanOtsu, detectDocument, scanFind,
     solveHomography, warpPerspective, scanRefineCorners, scanImage, applyLook, preparePage,
   ];
 
-  const WORKER_SOURCE = `${[fitWithin, renderJpeg, ...SCAN_FUNCTIONS].join('\n')}\n(${workerMain})();`;
+  // JPEG size + EXIF orientation from the first bytes of a file (no full decode). null if not a JPEG.
+  function readImageHeader(bytes) {
+    if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+    let orientation = 1;
+    let i = 2;
+    while (i + 9 < bytes.length) {
+      if (bytes[i] !== 0xff) { i += 1; continue; }
+      const marker = bytes[i + 1];
+      if (marker === 0xff) { i += 1; continue; }
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue; }
+      const length = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (marker === 0xe1 && bytes[i + 4] === 0x45 && bytes[i + 5] === 0x78 && bytes[i + 6] === 0x69 && bytes[i + 7] === 0x66) {
+        const t = i + 10; // TIFF header
+        const little = bytes[t] === 0x49;
+        const u16 = (o) => (little ? bytes[o] | (bytes[o + 1] << 8) : (bytes[o] << 8) | bytes[o + 1]);
+        const u32 = (o) => (little
+          ? (bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) >>> 0
+          : ((bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3]) >>> 0);
+        const ifd = t + u32(t + 4);
+        if (ifd + 2 <= bytes.length) {
+          const count = u16(ifd);
+          for (let e = 0; e < count; e += 1) {
+            const at = ifd + 2 + e * 12;
+            if (at + 12 > bytes.length) break;
+            if (u16(at) === 0x0112) { orientation = u16(at + 8); break; }
+          }
+        }
+      }
+      const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      if (isSof) return { height: (bytes[i + 5] << 8) | bytes[i + 6], width: (bytes[i + 7] << 8) | bytes[i + 8], orientation };
+      i += 2 + length;
+    }
+    return null;
+  }
+
+  // Decode a photo. Very large ones (50/108 MP phone cameras) are decoded straight to ~4096 px, which is
+  // far faster and avoids running out of memory on phones. Only a target WIDTH is given, so the browser keeps
+  // the right shape after applying the photo's rotation (checked in Chrome: width+height would squash it).
+  async function decodePhoto(file) {
+    try {
+      const header = readImageHeader(new Uint8Array(await file.slice(0, 262144).arrayBuffer()));
+      if (header && header.width * header.height > 24e6) {
+        const turned = header.orientation >= 5 && header.orientation <= 8;
+        const width = turned ? header.height : header.width;
+        const height = turned ? header.width : header.height;
+        const scale = 4096 / Math.max(width, height);
+        return await createImageBitmap(file, { resizeWidth: Math.round(width * scale), resizeQuality: 'high' });
+      }
+    } catch (_) { /* fall back to a normal decode */ }
+    return createImageBitmap(file); // applies EXIF rotation
+  }
+
+  const WORKER_SOURCE = `${[fitWithin, renderJpeg, readImageHeader, decodePhoto, ...SCAN_FUNCTIONS].join('\n')}\n(${workerMain})();`;
 
   class WorkerPool {
     constructor(size, onBroken) {
@@ -1057,7 +1773,7 @@
   async function decodeOnMain(file) {
     if (typeof createImageBitmap === 'function') {
       try {
-        const bitmap = await createImageBitmap(file);
+        const bitmap = await decodePhoto(file);
         return { source: bitmap, w: bitmap.width, h: bitmap.height, release: () => bitmap.close() };
       } catch (_) { /* fall back to <img> decoding */ }
     }
@@ -1089,7 +1805,7 @@
         : await renderJpeg(page.source, page.w, page.h, payload.maxEdge, payload.quality, mainMakeCanvas, mainToBlob);
       return {
         buffer: await out.blob.arrayBuffer(), w: out.w, h: out.h, srcW: page.w, srcH: page.h,
-        scanned: page.scanned, corners: page.corners, processed: page.processed,
+        scanned: page.scanned, corners: page.corners, guess: page.guess, processed: page.processed,
       };
     } finally {
       decoded.release();
@@ -1762,7 +2478,19 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 .camera-modal video {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000;
 }
-.camera-modal.is-mirrored video { transform: scaleX(-1); }
+.camera-modal.is-mirrored video, .camera-modal.is-mirrored .camera-outline { transform: scaleX(-1); }
+.camera-outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.camera-outline polygon {
+  fill: rgba(61, 220, 132, 0.12); stroke: #3ddc84; stroke-width: 3; stroke-linejoin: round;
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.camera-outline.is-found polygon { opacity: 1; }
+.camera-outline.is-guess polygon { opacity: 1; fill: rgba(245, 180, 60, 0.08); stroke: #f5b43c; stroke-dasharray: 10 8; }
+.camera-detect {
+  padding: 5px 11px; border-radius: 999px; background: rgba(0, 0, 0, 0.38); color: #e6edf7;
+  font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.camera-detect.is-found { background: rgba(30, 132, 73, 0.85); color: #fff; }
 .camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 .camera-flash.is-flashing { animation: pps-flash 0.16s ease-out; }
 @keyframes pps-flash { from { opacity: 0.55; } to { opacity: 0; } }
@@ -2045,6 +2773,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
   .queue-head { flex-direction: column; gap: 6px; }
   .queue-aside { max-width: none; text-align: left; }
   .preview { height: 340px; }
+  .preview-caption { gap: 8px; padding: 10px 12px; }
+  .caption-badge { display: none; } /* the page number is on the queue card too; room for the file name */
   .field-row { grid-template-columns: 1fr; }
   .btn-row .btn { flex: 1 1 40%; padding-inline: 12px; }
   .btn-row .btn-clear { flex-basis: 100%; }
@@ -2286,10 +3016,12 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
 <div class="camera-modal" id="cameraModal" role="dialog" aria-modal="true" aria-label="Camera" hidden>
   <video id="cameraVideo" playsinline muted autoplay></video>
+  <svg class="camera-outline" id="cameraOutline" aria-hidden="true"><polygon id="cameraOutlineShape"></polygon></svg>
   <div class="camera-flash" id="cameraFlash"></div>
   <div class="camera-top">
     <span class="camera-title">Camera</span>
     <span class="camera-count" id="cameraCount" aria-live="polite">0 photos</span>
+    <span class="camera-detect" id="cameraDetect" hidden></span>
     <div class="camera-top-actions">
       <button type="button" class="camera-icon-btn" id="cameraSwitchButton" aria-label="Switch camera" hidden>${ICON_SWITCH}</button>
       <button type="button" class="camera-icon-btn" id="cameraCloseButton" aria-label="Close camera">×</button>
@@ -2477,6 +3209,9 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       cameraVideo: $('cameraVideo'),
       cameraCount: $('cameraCount'),
       cameraHint: $('cameraHint'),
+      cameraOutline: $('cameraOutline'),
+      cameraOutlineShape: $('cameraOutlineShape'),
+      cameraDetect: $('cameraDetect'),
       cameraLast: $('cameraLast'),
       cameraLastCanvas: $('cameraLastCanvas'),
       cameraLastBadge: $('cameraLastBadge'),
@@ -2490,7 +3225,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       cameraFallbackButton: $('cameraFallbackButton'),
     };
 
-    const state = { items: [], selectedId: null, nextId: 1, busy: false, scanReport: false, defaultLook: 'original' };
+    const state = { items: [], selectedId: null, nextId: 1, busy: false, scanReport: false, reportPrefix: '', defaultLook: 'original' };
     const api = {};
 
     const readSettings = () => ({
@@ -2530,7 +3265,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
       getPool();
       const scanNew = ui.scanAllInput.checked && !ui.scanAllInput.indeterminate;
-      if (scanNew) state.scanReport = true;
+      if (scanNew || fromCamera) state.scanReport = true;
       let firstNew = null;
       for (const file of files) {
         const item = {
@@ -2548,8 +3283,9 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
           status: 'pending',
           error: '',
           encoded: null,
-          scan: scanNew,
+          scan: fromCamera || scanNew, // camera photos are scanned automatically
           scanCorners: null,
+          scanGuess: null, // best near-miss corners when no page was found with confidence
           scanState: 'off', // 'off' | 'scanned' | 'not-found'
           cornersManual: false, // corners placed by hand in the editor
           cornersRefine: false, // corners from the editor's auto detect: sharpen them on the full image
@@ -2618,6 +3354,9 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
           if (result.scanned) {
             item.scanCorners = result.corners;
             item.cornersRefine = false;
+            item.scanGuess = null;
+          } else if (scan) {
+            item.scanGuess = result.guess || null; // near-miss: the editor starts from it
           }
           // Processed pages (scanned or with a look) preview exactly what goes into the PDF.
           setPreviewUrl(item, result.processed ? URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })) : null);
@@ -2848,7 +3587,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       if (!item.scan || item.status === 'error') return null;
       if (item.status === 'pending') return { text: 'Scanning…', tone: 'is-working' };
       if (item.scanState === 'scanned') return { text: item.cornersManual ? 'Adjusted' : 'Scanned', tone: 'is-scanned' };
-      if (item.scanState === 'not-found') return { text: 'No page found', tone: 'is-missed' };
+      if (item.scanState === 'not-found') return { text: item.scanGuess ? 'Check corners' : 'No page found', tone: 'is-missed' };
       return null;
     }
 
@@ -2857,7 +3596,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       let text = `${dimensionsText(item)} / ${formatBytes(item.size)}`;
       if (item.scan && item.status === 'ready') {
         if (item.scanState === 'scanned') text += item.cornersManual ? ' · Adjusted' : ' · Scanned';
-        else text += ' · No page found, used as-is';
+        else if (item.scanGuess) text += ' · Not sure where the page is: tap Edit to check the corners';
+        else text += ' · No page found, used as-is (tap Edit to set the corners)';
       }
       if (item.look !== 'original') text += ` · ${LOOK_LABELS[item.look]}`;
       return text;
@@ -2994,16 +3734,18 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     }
 
     function reportScan() {
+      const prefix = state.reportPrefix ? `${state.reportPrefix} ` : '';
+      state.reportPrefix = '';
       const scanOn = state.items.filter((item) => item.scan && item.status !== 'error');
       if (!scanOn.length) {
-        setStatus('Scan is off. Photos are used as they are.', 'info');
+        setStatus(`${prefix}Scan is off. Photos are used as they are.`, 'info');
         return;
       }
       const found = scanOn.filter((item) => item.scanState === 'scanned').length;
       const missed = scanOn.length - found;
-      let message = `Scanned ${found} of ${plural(scanOn.length, 'photo')}.`;
-      if (missed === 1) message += " 1 page edge wasn't found, so that photo is used as-is.";
-      else if (missed > 1) message += ` ${missed} page edges weren't found, so those photos are used as-is.`;
+      let message = `${prefix}Scanned ${found} of ${plural(scanOn.length, 'photo')}.`;
+      if (missed === 1) message += " 1 photo is used as-is: tap Edit on it to set the page corners.";
+      else if (missed > 1) message += ` ${missed} photos are used as-is: tap Edit on them to set the page corners.`;
       setStatus(message, missed ? 'info' : 'success');
     }
 
@@ -3266,6 +4008,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
         let message = `Saved ${fileName}: ${plural(pages.length, 'page')}, ${formatBytes(blob.size)}, built in ${buildMs < 1 ? '<1' : Math.round(buildMs)} ms.`;
         if (failed) message += ` Left out ${plural(failed, 'unreadable photo')}.`;
         state.scanReport = false; // the "Saved…" message matters more than a scan summary
+        state.reportPrefix = '';
         setStatus(message, 'success');
         brew.finish(`Saved ${fileName}: ${plural(pages.length, 'page')}, ${formatBytes(blob.size)}.`);
       } catch (error) {
@@ -3323,11 +4066,92 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
     }
 
     function stopCameraStream() {
+      stopLiveOutline();
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
         cameraStream = null;
       }
       ui.cameraVideo.srcObject = null;
+    }
+
+    // ---------- Live page outline: about 4 checks a second on a small copy of the camera picture ----------
+    let liveTimer = 0;
+    let liveBusy = false;
+    let liveLastFound = 0;
+    let liveCorners = null;
+
+    function startLiveOutline() {
+      stopLiveOutline();
+      const workerPool = getPool();
+      if (!workerPool || poolBroken || typeof createImageBitmap !== 'function') return; // needs background workers
+      ui.cameraDetect.hidden = false;
+      ui.cameraDetect.classList.remove('is-found');
+      ui.cameraDetect.textContent = 'Looking for the page…';
+      liveLastFound = performance.now();
+      liveTimer = setInterval(liveTick, 250);
+    }
+
+    function stopLiveOutline() {
+      clearInterval(liveTimer);
+      liveTimer = 0;
+      liveCorners = null;
+      ui.cameraOutline.classList.remove('is-found', 'is-guess');
+      ui.cameraDetect.hidden = true;
+    }
+
+    async function liveTick() {
+      const video = ui.cameraVideo;
+      if (liveBusy || ui.cameraModal.hidden || ui.cameraShutter.disabled || !video.videoWidth) return;
+      const workerPool = getPool();
+      if (!workerPool || poolBroken) return;
+      liveBusy = true; // only one frame in flight, so it never piles up
+      try {
+        const size = fitWithin(video.videoWidth, video.videoHeight, 320);
+        let frame;
+        try {
+          frame = await createImageBitmap(video, { resizeWidth: size.w, resizeHeight: size.h, resizeQuality: 'low' });
+        } catch (_) {
+          frame = await createImageBitmap(video); // browsers without resize options: the worker shrinks it
+        }
+        const result = await workerPool.run({ detect: frame }, FRAME_HOOKS, { transfer: [frame], priority: true });
+        if (liveTimer && !ui.cameraModal.hidden) showLiveOutline(result ? result.found : null);
+      } catch (_) {
+        /* skip this frame */
+      } finally {
+        liveBusy = false;
+      }
+    }
+
+    function showLiveOutline(found) {
+      const now = performance.now();
+      const outline = ui.cameraOutline;
+      if (!found || (!found.confident && found.score < 0.05)) { // weak editor-only guesses aren't drawn live
+        liveCorners = null;
+        outline.classList.remove('is-found', 'is-guess');
+        ui.cameraDetect.classList.remove('is-found');
+        ui.cameraDetect.textContent = now - liveLastFound > 2500 ? 'Show all 4 corners of the page' : 'Looking for the page…';
+        return;
+      }
+      if (found.confident) liveLastFound = now;
+      // Smooth small wobbles; jump straight to big changes.
+      const next = found.corners;
+      const close = liveCorners && next.every((p, i) => Math.hypot(p[0] - liveCorners[i][0], p[1] - liveCorners[i][1]) < 0.06);
+      liveCorners = close ? next.map((p, i) => [(p[0] + liveCorners[i][0]) / 2, (p[1] + liveCorners[i][1]) / 2]) : next;
+      // Map to the screen: the video is shown "contain"-fitted inside the full-screen view.
+      const video = ui.cameraVideo;
+      const boxW = outline.clientWidth;
+      const boxH = outline.clientHeight;
+      const scale = Math.min(boxW / video.videoWidth, boxH / video.videoHeight);
+      const shownW = video.videoWidth * scale;
+      const shownH = video.videoHeight * scale;
+      const offX = (boxW - shownW) / 2;
+      const offY = (boxH - shownH) / 2;
+      outline.setAttribute('viewBox', `0 0 ${boxW} ${boxH}`);
+      ui.cameraOutlineShape.setAttribute('points', liveCorners.map(([u, v]) => `${(offX + u * shownW).toFixed(1)},${(offY + v * shownH).toFixed(1)}`).join(' '));
+      outline.classList.toggle('is-found', found.confident);
+      outline.classList.toggle('is-guess', !found.confident);
+      ui.cameraDetect.classList.toggle('is-found', found.confident);
+      ui.cameraDetect.textContent = found.confident ? 'Page found ✓' : 'Hold steady…';
     }
 
     function showCameraError(error) {
@@ -3344,6 +4168,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       ui.cameraErrorBox.hidden = false;
       ui.cameraHint.classList.add('is-hidden');
       ui.cameraShutter.disabled = true;
+      stopLiveOutline();
       ui.cameraDoneButton.focus();
     }
 
@@ -3371,6 +4196,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       await ui.cameraVideo.play().catch(() => {});
       ui.cameraErrorBox.hidden = true;
       ui.cameraShutter.disabled = false;
+      startLiveOutline();
 
       try {
         cameraDevices = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
@@ -3441,6 +4267,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       if (taken) {
         cameraAddChain.then(() => {
           setStatus(`Added ${plural(taken, 'photo')} from the camera. ${plural(state.items.length, 'page')} in the queue.`, 'success');
+          // Follow up with how the auto scan went (straight away, or once the last photo is processed).
+          state.reportPrefix = `Added ${plural(taken, 'photo')} from the camera.`;
+          state.scanReport = true;
+          renderControls();
         });
       }
       if (focusBeforeCamera && typeof focusBeforeCamera.focus === 'function') focusBeforeCamera.focus();
@@ -3569,13 +4399,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
     function detectInEditor() {
       const img = ui.editorImage;
-      const small = fitWithin(img.naturalWidth, img.naturalHeight, 512);
-      const canvas = mainMakeCanvas(small.w, small.h);
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, small.w, small.h);
-      ctx.drawImage(img, 0, 0, small.w, small.h);
-      return detectDocument(ctx.getImageData(0, 0, small.w, small.h));
+      return scanFind(img, img.naturalWidth, img.naturalHeight, mainMakeCanvas);
     }
 
     function layoutEditor() {
@@ -3665,11 +4489,20 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
         setEditorHint('Drag the corners onto the page’s corners.');
         return;
       }
+      if (item.scanGuess) {
+        editor.corners = item.scanGuess.map((p) => p.slice());
+        editor.fromAuto = true;
+        editor.handPlaced = false;
+        setEditorHint('This might be the page. Check the corners, then tap Apply.');
+        return;
+      }
       const found = detectInEditor();
-      editor.corners = found || FULL_PHOTO.map((p) => [0.06 + p[0] * 0.88, 0.06 + p[1] * 0.88]);
+      editor.corners = found ? found.corners : FULL_PHOTO.map((p) => [0.06 + p[0] * 0.88, 0.06 + p[1] * 0.88]);
       editor.fromAuto = !!found;
       editor.handPlaced = false;
-      setEditorHint(found ? 'Page found. Fine-tune the corners if needed.' : "Couldn't find the page edges. Drag the corners onto the page's corners.");
+      if (!found) setEditorHint("Couldn't find the page edges. Drag the corners onto the page's corners.");
+      else if (found.confident) setEditorHint('Page found. Fine-tune the corners if needed.');
+      else setEditorHint('This might be the page. Check the corners, then tap Apply.');
     }
 
     function openEditor(id) {
@@ -3782,10 +4615,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       if (!ui.editorImage.naturalWidth) return;
       const found = detectInEditor();
       if (found) {
-        editor.corners = found;
+        editor.corners = found.corners;
         editor.fromAuto = true;
         editor.handPlaced = false;
-        setEditorHint('Page found. Fine-tune the corners if needed.');
+        setEditorHint(found.confident ? 'Page found. Fine-tune the corners if needed.' : 'This might be the page. Check the corners, then tap Apply.');
       } else {
         setEditorHint("Couldn't find the page edges. Drag the corners onto the page's corners.", true);
       }
