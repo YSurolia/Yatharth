@@ -262,7 +262,7 @@
     return out;
   }
 
-  // The same quad with every side pushed outward by d pixels (corners kept inside the w×h image).
+  // The same quad with every side pushed outward by d pixels (corners kept within 8% of the w×h image).
   function scanGrowQuad(quad, d, w, h) {
     const cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
     const cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
@@ -285,8 +285,8 @@
       const pa = a1[0] * a2[1] - a1[1] * a2[0];
       const pb = b1[0] * b2[1] - b1[1] * b2[0];
       out.push([
-        Math.min(w - 1, Math.max(0, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
-        Math.min(h - 1, Math.max(0, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
+        Math.min((w - 1) * 1.08, Math.max(-w * 0.08, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
+        Math.min((h - 1) * 1.08, Math.max(-h * 0.08, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
       ]);
     }
     return out;
@@ -647,11 +647,14 @@
       const outL = (read(lum, sx + nx * 3, sy + ny * 3) + read(lum, sx + nx * 6, sy + ny * 6)) / 2;
       // Paper → ink-dark band → paper again: a header bar or thick printed line INSIDE the page, not its edge.
       // (Ink is far darker than a page's own drop shadow, so a real edge on a white sheet doesn't trigger this.)
+      // The paper level is read a little deeper in, so a side lying along the band's inner edge (or a few px
+      // into the band) is caught too.
+      const inRef = Math.max(read(lum, sx - nx * 6, sy - ny * 6), read(lum, sx - nx * 10, sy - ny * 10));
       let darkest = 255;
-      for (let o = 3; o <= 11; o += 2) darkest = Math.min(darkest, read(lum, sx + nx * o, sy + ny * o));
-      if (inL - darkest >= 120) {
+      for (let o = -1; o <= 11; o += 2) darkest = Math.min(darkest, read(lum, sx + nx * o, sy + ny * o));
+      if (inRef - darkest >= 120) {
         for (let o = 14; o <= 38; o += 4) {
-          if (Math.abs(read(lum, sx + nx * o, sy + ny * o) - inL) <= 20) { banded += 1; break; }
+          if (Math.abs(read(lum, sx + nx * o, sy + ny * o) - inRef) <= 20) { banded += 1; break; }
         }
       }
       const inP = (read(paper, sx - nx * 3, sy - ny * 3) + read(paper, sx - nx * 6, sy - ny * 6)) / 2;
@@ -721,9 +724,11 @@
       if (Math.abs(den) < 1e-9) return quad;
       const pa = a1[0] * a2[1] - a1[1] * a2[0];
       const pb = b1[0] * b2[1] - b1[1] * b2[0];
+      const sx = ctx.w * 0.08; // corners may sit a little outside the photo (see scanQuadsFromLines)
+      const sy = ctx.h * 0.08;
       out.push([
-        Math.min(ctx.w - 1, Math.max(0, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
-        Math.min(ctx.h - 1, Math.max(0, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
+        Math.min(ctx.w - 1 + sx, Math.max(-sx, (pa * (b1[0] - b2[0]) - (a1[0] - a2[0]) * pb) / den)),
+        Math.min(ctx.h - 1 + sy, Math.max(-sy, (pa * (b1[1] - b2[1]) - (a1[1] - a2[1]) * pb) / den)),
       ]);
     }
     return scanOrder(out);
@@ -920,8 +925,9 @@
       }
     }
     const ring = ringGood / ringAll;
-    // Margins: just inside every side (4–8 px) there should be paper. A side that runs along a stripe or check
-    // line beside the page instead has a wedge of bedsheet just inside it, for much of its length.
+    // Margins: just inside every side (4–8 px) there should be plain paper: bright, and even along the side.
+    // A side that runs along a stripe or check line beside the page instead has a wedge of bedsheet just
+    // inside it, for much of its length: darker, or flipping between the print's colours.
     let marginWeakest = 1;
     if (median > 60) {
       for (let i = 0; i < 4; i += 1) {
@@ -933,6 +939,8 @@
         if (((p[0] + q[0]) / 2 - cx) * nx + ((p[1] + q[1]) / 2 - cy) * ny > 0) { nx = -nx; ny = -ny; } // inward
         let good = 0;
         let all = 0;
+        let jumps = 0;
+        let last = -1;
         for (let k = 0; k < 24; k += 1) {
           const t = 0.08 + (0.84 * (k + 0.5)) / 24;
           const sx = p[0] + (q[0] - p[0]) * t;
@@ -941,11 +949,16 @@
           all += 1;
           const v = (paper[clampY(sy + ny * 4) * w + clampX(sx + nx * 4)] + paper[clampY(sy + ny * 8) * w + clampX(sx + nx * 8)]) / 2;
           if (v >= median * 0.6) good += 1;
+          if (last >= 0 && Math.abs(v - last) > 12) jumps += 1;
+          last = v;
         }
-        if (all >= 6 && good / all < marginWeakest) marginWeakest = good / all;
+        if (all < 6) continue;
+        const even = 1 - Math.min(1, Math.max(0, jumps - 2) / 6); // a shadow's edge or two is fine; a print isn't
+        const side = Math.min(good / all / 0.85, even);
+        if (side < marginWeakest) marginWeakest = side;
       }
     }
-    const margin = Math.min(1, marginWeakest / 0.85);
+    const margin = Math.min(1, marginWeakest);
     const inside = Math.pow(smooth, 2) * Math.pow(ring, 1.5) * (1 - Math.min(0.6, edgeDensity * 1.5)) * margin * margin;
     if (info) Object.assign(info, { weakest, mean: total / 4, smooth, ring, edgeDensity, margin, inside, areaShare: area / imageArea });
     return Math.pow(area / imageArea, 0.35) * weakest * weakest * (total / 4) * inside;
@@ -1055,8 +1068,10 @@
       if (Math.abs(det) < 1e-6) return null;
       return [(a.rho * b.s - b.rho * a.s) / det, (a.c * b.rho - b.c * a.rho) / det];
     };
-    const slackX = w * 0.04;
-    const slackY = h * 0.04;
+    // Corners may sit a little outside the photo: a page held close (typical for upright phone shots) often
+    // has a corner or two just past the frame. Pulling them onto the frame edge would bend the page's sides.
+    const slackX = w * 0.08;
+    const slackY = h * 0.08;
     const quads = [];
     for (let a = 0; a < pairs.length; a += 1) {
       for (let b = a + 1; b < pairs.length; b += 1) {
@@ -1066,7 +1081,7 @@
         if (angleGap(L[i], L[k]) < 35) continue;
         const pts = [meet(L[i], L[k]), meet(L[i], L[l]), meet(L[j], L[l]), meet(L[j], L[k])];
         if (pts.some((p) => !p || p[0] < -slackX || p[1] < -slackY || p[0] > w - 1 + slackX || p[1] > h - 1 + slackY)) continue;
-        quads.push(scanOrder(pts.map((p) => [Math.min(w - 1, Math.max(0, p[0])), Math.min(h - 1, Math.max(0, p[1]))])));
+        quads.push(scanOrder(pts));
       }
     }
     return quads;
@@ -1342,6 +1357,12 @@
       for (let x = 0; x < ow; x += 1) {
         let sx = nx / nz - 0.5;
         let sy = ny / nz - 0.5;
+        if (sx < -1.5 || sy < -1.5 || sx > maxX + 1.5 || sy > maxY + 1.5) {
+          // A page corner beyond the photo's edge: that bit of the page wasn't photographed, so leave it white.
+          od[o] = 255; od[o + 1] = 255; od[o + 2] = 255; od[o + 3] = 255;
+          o += 4; nx += a; ny += d; nz += g;
+          continue;
+        }
         if (sx < 0) sx = 0; else if (sx > maxX) sx = maxX;
         if (sy < 0) sy = 0; else if (sy > maxY) sy = maxY;
         const x0 = sx | 0;
@@ -1451,8 +1472,6 @@
     return refined;
   }
 
-  // Find (or reuse) the page corners and return a straightened canvas. If no page is found with confidence,
-  // returns { canvas: null, guess } (guess = best near-miss corners for the editor, or null).
   // Find the page in a photo (anything drawable). Looks at a 512 px copy first and, if that isn't sure, at a
   // 360 px one too: on fine prints (thin stripes, small checks) the smaller copy melts the pattern while the
   // page's edge stays sharp. The second look has to be clearly sure (score ≥ 0.3) to count as found.
@@ -1474,6 +1493,8 @@
     return best;
   }
 
+  // Find (or reuse) the page corners and return a straightened canvas. If no page is found with confidence,
+  // returns { canvas: null, guess } (guess = best near-miss corners for the editor, or null).
   function scanImage(source, srcW, srcH, knownCorners, maxEdge, makeCanvas, refine, manual) {
     let corners = knownCorners;
     if (!corners) {
@@ -4179,21 +4200,40 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       ui.cameraShutter.disabled = true;
 
       // 1080p at 30 fps: starts fast and keeps the preview smooth (4K makes many cameras slow and choppy).
-      const size = { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } };
-      const video = deviceId ? { deviceId: { exact: deviceId }, ...size } : { facingMode: { ideal: 'environment' }, ...size };
-      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
-      if (token !== cameraStartToken || ui.cameraModal.hidden) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
+      const where = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } };
+      const open = async (width, height) => {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { ...where, width: { ideal: width }, height: { ideal: height }, frameRate: { ideal: 30 } },
+          audio: false,
+        });
+        if (token !== cameraStartToken || ui.cameraModal.hidden) {
+          stream.getTracks().forEach((track) => track.stop());
+          return false;
+        }
+        cameraStream = stream;
+        ui.cameraVideo.srcObject = stream;
+        await ui.cameraVideo.play().catch(() => {});
+        return true;
+      };
+      if (!(await open(1920, 1080))) return;
+      // Phone held upright but the picture came out sideways (wide): some phone browsers don't turn the size
+      // request with the screen. Ask once more with the sizes swapped, so upright pages fill the picture.
+      const shown = ui.cameraVideo;
+      if (!finePointer() && window.innerHeight > window.innerWidth && shown.videoWidth > shown.videoHeight) {
+        stopCameraStream(); // most phones can't open the camera twice at once
+        let reopened;
+        try {
+          reopened = await open(1080, 1920);
+        } catch (_) {
+          reopened = await open(1920, 1080); // that size isn't offered: back to the first one
+        }
+        if (!reopened) return;
       }
 
-      cameraStream = stream;
-      const track = stream.getVideoTracks()[0];
+      const track = cameraStream.getVideoTracks()[0];
       const info = track && typeof track.getSettings === 'function' ? track.getSettings() : {};
       cameraDeviceId = info.deviceId || deviceId || null;
       ui.cameraModal.classList.toggle('is-mirrored', info.facingMode === 'user'); // selfie camera: mirror the preview only
-      ui.cameraVideo.srcObject = stream;
-      await ui.cameraVideo.play().catch(() => {});
       ui.cameraErrorBox.hidden = true;
       ui.cameraShutter.disabled = false;
       startLiveOutline();
@@ -4397,9 +4437,13 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
       return true;
     }
 
+    // The editor's handles stay on the photo, so corners found just past its edge are pulled onto it.
+    const onPhoto = (corners) => corners.map((p) => [clamp01(p[0]), clamp01(p[1])]);
+
     function detectInEditor() {
       const img = ui.editorImage;
-      return scanFind(img, img.naturalWidth, img.naturalHeight, mainMakeCanvas);
+      const found = scanFind(img, img.naturalWidth, img.naturalHeight, mainMakeCanvas);
+      return found ? { ...found, corners: onPhoto(found.corners) } : null;
     }
 
     function layoutEditor() {
@@ -4483,14 +4527,14 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba
 
     function startEditorCorners(item) {
       if (item.scan && item.scanCorners) {
-        editor.corners = item.scanCorners.map((p) => p.slice());
+        editor.corners = onPhoto(item.scanCorners);
         editor.fromAuto = !!item.cornersRefine;
         editor.handPlaced = !!item.cornersManual;
         setEditorHint('Drag the corners onto the page’s corners.');
         return;
       }
       if (item.scanGuess) {
-        editor.corners = item.scanGuess.map((p) => p.slice());
+        editor.corners = onPhoto(item.scanGuess);
         editor.fromAuto = true;
         editor.handPlaced = false;
         setEditorHint('This might be the page. Check the corners, then tap Apply.');
